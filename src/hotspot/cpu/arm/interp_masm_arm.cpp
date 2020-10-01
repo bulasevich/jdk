@@ -990,7 +990,8 @@ void InterpreterMacroAssembler::unlock_object(Register Rlock) {
   assert(Rlock == R1, "the second argument");
 
   if (UseHeavyMonitors) {
-    call_VM_leaf(CAST_FROM_FN_PTR(address, InterpreterRuntime::monitorexit), Rlock);
+    mov(R0, Rlock);
+    call_VM_leaf(CAST_FROM_FN_PTR(address, InterpreterRuntime::monitorexit), R0);
   } else {
     Label done, slow_case;
 
@@ -1031,7 +1032,8 @@ void InterpreterMacroAssembler::unlock_object(Register Rlock) {
 
     // Call the runtime routine for slow case.
     str(Robj, Address(Rlock, obj_offset)); // restore obj
-    call_VM_leaf(CAST_FROM_FN_PTR(address, InterpreterRuntime::monitorexit), Rlock);
+    mov(R0, Rlock);
+    call_VM_leaf(CAST_FROM_FN_PTR(address, InterpreterRuntime::monitorexit), R0);
 
     bind(done);
   }
