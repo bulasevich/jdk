@@ -112,18 +112,16 @@ intx CompilerConfig::scaled_freq_log(intx freq_log, double scale) {
   if (scale == 0.0 || freq_log == 0) {
     return 0;
   }
-  // Determine the maximum notification frequency value currently supported.
   // The largest mask value that the interpreter/C1 can handle is
-  // of length InvocationCounter::number_of_count_bits. Mask values are always
-  // one bit shorter then the value of the notification frequency. Set
-  // max_freq_bits accordingly.
-  intx max_freq_bits = InvocationCounter::number_of_count_bits + 1;
+  // of length InvocationCounter::number_of_count_bits.
+  intx freq_bits = InvocationCounter::number_of_count_bits;
+  intx max_freq  = 1 << (freq_bits - 1);
   intx scaled_freq = scaled_compile_threshold((intx)1 << freq_log, scale);
   if (scaled_freq == 0) {
     // Return 0 right away to avoid calculating log2 of 0.
     return 0;
-  } else if (scaled_freq > nth_bit(max_freq_bits)) {
-    return max_freq_bits;
+  } else if (scaled_freq > max_freq) {
+    return max_freq;
   } else {
     return log2_intptr(scaled_freq);
   }
