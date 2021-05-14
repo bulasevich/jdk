@@ -223,6 +223,10 @@ int C1_MacroAssembler::lock_object(Register hdr, Register obj,
   // Must be the first instruction here, because implicit null check relies on it
   ldr(hdr, Address(obj, oopDesc::mark_offset_in_bytes()));
 
+  orr(hdr, hdr, markWord::unlocked_value);
+  // save unlocked object header into the displaced header location on the stack
+  str(hdr, Address(disp_hdr, 0));
+
   tst(hdr, markWord::unlocked_value);
   b(fast_lock, ne);
 
