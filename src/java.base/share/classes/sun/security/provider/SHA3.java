@@ -255,13 +255,522 @@ abstract class SHA3 extends DigestBase {
      * The function Keccak as defined in section 5.2 with
      * rate r = 1600 and capacity c = (digest length x 2).
      */
-    private void keccak() {
+    private void keccak() {                       // Graviton   Xeon_8268
+        // keccak_0_default();                    // 2764ms     1846ms
+        // keccak_1_nativeimpl();                 // 1701ms     1649ms
+        // keccak_2_inlined_unrolled();           // 1754ms     1499ms
+        // keccak_3_inlined_unrolled_localvars(); // 1437ms     1261ms
+
+        // Nov, 25
+        //
+           keccak_0_default();                    // 2751ms
+        // keccak_2_inlined();                    // 2776ms
+        // keccak_2_unrolled();                   // 2550ms
+        // keccak_2_inlined_unrolled();           // 1754ms
+    }
+
+    private void keccak_0_default() {
         // convert the 200-byte state into 25 lanes
         bytes2Lanes(state, lanes);
         // process the lanes through step mappings
         for (int ir = 0; ir < NR; ir++) {
             smIota(smChi(smPiRho(smTheta(lanes))), ir);
         }
+        // convert the resulting 25 lanes back into 200-byte state
+        lanes2Bytes(lanes, state);
+    }
+
+    private static native void keccak0(long[] lanes);
+
+    private void keccak_1_nativeimpl() {
+        // convert the 200-byte state into 25 lanes
+        bytes2Lanes(state, lanes);
+        // call the native method impl
+        keccak0(lanes);
+        // convert the resulting 25 lanes back into 200-byte state
+        lanes2Bytes(lanes, state);
+    }
+
+    private void keccak_2_inlined() {
+        // convert the 200-byte state into 25 lanes
+        bytes2Lanes(state, lanes);
+        long[] a = lanes;
+        // process the lanes through step mappings
+        for (int ir = 0; ir < NR; ir++) {
+            long c0 = a[0]^a[5]^a[10]^a[15]^a[20];
+            long c1 = a[1]^a[6]^a[11]^a[16]^a[21];
+            long c2 = a[2]^a[7]^a[12]^a[17]^a[22];
+            long c3 = a[3]^a[8]^a[13]^a[18]^a[23];
+            long c4 = a[4]^a[9]^a[14]^a[19]^a[24];
+            long d0 = c4 ^ Long.rotateLeft(c1, 1);
+            long d1 = c0 ^ Long.rotateLeft(c2, 1);
+            long d2 = c1 ^ Long.rotateLeft(c3, 1);
+            long d3 = c2 ^ Long.rotateLeft(c4, 1);
+            long d4 = c3 ^ Long.rotateLeft(c0, 1);
+            for (int y = 0; y < a.length; y += DM) {
+                a[y] ^= d0;
+                a[y+1] ^= d1;
+                a[y+2] ^= d2;
+                a[y+3] ^= d3;
+                a[y+4] ^= d4;
+            }
+
+            // smPiRho
+            long tmp = Long.rotateLeft(a[10], 3);
+            a[10] = Long.rotateLeft(a[1], 1);
+            a[1] = Long.rotateLeft(a[6], 44);
+            a[6] = Long.rotateLeft(a[9], 20);
+            a[9] = Long.rotateLeft(a[22], 61);
+            a[22] = Long.rotateLeft(a[14], 39);
+            a[14] = Long.rotateLeft(a[20], 18);
+            a[20] = Long.rotateLeft(a[2], 62);
+            a[2] = Long.rotateLeft(a[12], 43);
+            a[12] = Long.rotateLeft(a[13], 25);
+            a[13] = Long.rotateLeft(a[19], 8);
+            a[19] = Long.rotateLeft(a[23], 56);
+            a[23] = Long.rotateLeft(a[15], 41);
+            a[15] = Long.rotateLeft(a[4], 27);
+            a[4] = Long.rotateLeft(a[24], 14);
+            a[24] = Long.rotateLeft(a[21], 2);
+            a[21] = Long.rotateLeft(a[8], 55);
+            a[8] = Long.rotateLeft(a[16], 45);
+            a[16] = Long.rotateLeft(a[5], 36);
+            a[5] = Long.rotateLeft(a[3], 28);
+            a[3] = Long.rotateLeft(a[18], 21);
+            a[18] = Long.rotateLeft(a[17], 15);
+            a[17] = Long.rotateLeft(a[11], 10);
+            a[11] = Long.rotateLeft(a[7], 6);
+            a[7] = tmp;
+
+            // smChi
+            for (int y = 0; y < a.length; y+=DM) {
+                long ay0 = a[y];
+                long ay1 = a[y+1];
+                long ay2 = a[y+2];
+                long ay3 = a[y+3];
+                long ay4 = a[y+4];
+                a[y] = ay0 ^ ((~ay1) & ay2);
+                a[y+1] = ay1 ^ ((~ay2) & ay3);
+                a[y+2] = ay2 ^ ((~ay3) & ay4);
+                a[y+3] = ay3 ^ ((~ay4) & ay0);
+                a[y+4] = ay4 ^ ((~ay0) & ay1);
+            }
+
+            // smIota
+            a[0] ^= RC_CONSTANTS[ir];
+        }
+        // convert the resulting 25 lanes back into 200-byte state
+        lanes2Bytes(lanes, state);
+    }
+
+    private static long[] smTheta_unrolled(long[] a) {
+        long c0 = a[0]^a[5]^a[10]^a[15]^a[20];
+        long c1 = a[1]^a[6]^a[11]^a[16]^a[21];
+        long c2 = a[2]^a[7]^a[12]^a[17]^a[22];
+        long c3 = a[3]^a[8]^a[13]^a[18]^a[23];
+        long c4 = a[4]^a[9]^a[14]^a[19]^a[24];
+        long d0 = c4 ^ Long.rotateLeft(c1, 1);
+        long d1 = c0 ^ Long.rotateLeft(c2, 1);
+        long d2 = c1 ^ Long.rotateLeft(c3, 1);
+        long d3 = c2 ^ Long.rotateLeft(c4, 1);
+        long d4 = c3 ^ Long.rotateLeft(c0, 1);
+        a[0] ^= d0;
+        a[1] ^= d1;
+        a[2] ^= d2;
+        a[3] ^= d3;
+        a[4] ^= d4;
+        a[5] ^= d0;
+        a[6] ^= d1;
+        a[7] ^= d2;
+        a[8] ^= d3;
+        a[9] ^= d4;
+        a[10] ^= d0;
+        a[11] ^= d1;
+        a[12] ^= d2;
+        a[13] ^= d3;
+        a[14] ^= d4;
+        a[15] ^= d0;
+        a[16] ^= d1;
+        a[17] ^= d2;
+        a[18] ^= d3;
+        a[19] ^= d4;
+        a[20] ^= d0;
+        a[21] ^= d1;
+        a[22] ^= d2;
+        a[23] ^= d3;
+        a[24] ^= d4;
+        return a;
+    }
+
+    private static long[] smChi_unrolled(long[] a) {
+        long ay0 = a[0];
+        long ay1 = a[1];
+        long ay2 = a[2];
+        long ay3 = a[3];
+        long ay4 = a[4];
+        a[0] = ay0 ^ ((~ay1) & ay2);
+        a[1] = ay1 ^ ((~ay2) & ay3);
+        a[2] = ay2 ^ ((~ay3) & ay4);
+        a[3] = ay3 ^ ((~ay4) & ay0);
+        a[4] = ay4 ^ ((~ay0) & ay1);
+        ay0 = a[5];
+        ay1 = a[6];
+        ay2 = a[7];
+        ay3 = a[8];
+        ay4 = a[9];
+        a[5] = ay0 ^ ((~ay1) & ay2);
+        a[6] = ay1 ^ ((~ay2) & ay3);
+        a[7] = ay2 ^ ((~ay3) & ay4);
+        a[8] = ay3 ^ ((~ay4) & ay0);
+        a[9] = ay4 ^ ((~ay0) & ay1);
+        ay0 = a[10];
+        ay1 = a[11];
+        ay2 = a[12];
+        ay3 = a[13];
+        ay4 = a[14];
+        a[10] = ay0 ^ ((~ay1) & ay2);
+        a[11] = ay1 ^ ((~ay2) & ay3);
+        a[12] = ay2 ^ ((~ay3) & ay4);
+        a[13] = ay3 ^ ((~ay4) & ay0);
+        a[14] = ay4 ^ ((~ay0) & ay1);
+        ay0 = a[15];
+        ay1 = a[16];
+        ay2 = a[17];
+        ay3 = a[18];
+        ay4 = a[19];
+        a[15] = ay0 ^ ((~ay1) & ay2);
+        a[16] = ay1 ^ ((~ay2) & ay3);
+        a[17] = ay2 ^ ((~ay3) & ay4);
+        a[18] = ay3 ^ ((~ay4) & ay0);
+        a[19] = ay4 ^ ((~ay0) & ay1);
+        ay0 = a[20];
+        ay1 = a[21];
+        ay2 = a[22];
+        ay3 = a[23];
+        ay4 = a[24];
+        a[20] = ay0 ^ ((~ay1) & ay2);
+        a[21] = ay1 ^ ((~ay2) & ay3);
+        a[22] = ay2 ^ ((~ay3) & ay4);
+        a[23] = ay3 ^ ((~ay4) & ay0);
+        a[24] = ay4 ^ ((~ay0) & ay1);
+        return a;
+    }
+
+    private void keccak_2_unrolled() {
+        // convert the 200-byte state into 25 lanes
+        bytes2Lanes(state, lanes);
+        // process the lanes through step mappings
+        for (int ir = 0; ir < NR; ir++) {
+            smIota(smChi_unrolled(smPiRho(smTheta_unrolled(lanes))), ir);
+        }
+        // convert the resulting 25 lanes back into 200-byte state
+        lanes2Bytes(lanes, state);
+    }
+
+    private void keccak_2_inlined_unrolled() {
+        // convert the 200-byte state into 25 lanes
+        bytes2Lanes(state, lanes);
+        long[] a = lanes;
+        // process the lanes through step mappings
+        for (int ir = 0; ir < NR; ir++) {
+            long c0 = a[0]^a[5]^a[10]^a[15]^a[20];
+            long c1 = a[1]^a[6]^a[11]^a[16]^a[21];
+            long c2 = a[2]^a[7]^a[12]^a[17]^a[22];
+            long c3 = a[3]^a[8]^a[13]^a[18]^a[23];
+            long c4 = a[4]^a[9]^a[14]^a[19]^a[24];
+            long d0 = c4 ^ Long.rotateLeft(c1, 1);
+            long d1 = c0 ^ Long.rotateLeft(c2, 1);
+            long d2 = c1 ^ Long.rotateLeft(c3, 1);
+            long d3 = c2 ^ Long.rotateLeft(c4, 1);
+            long d4 = c3 ^ Long.rotateLeft(c0, 1);
+            a[0] ^= d0;
+            a[1] ^= d1;
+            a[2] ^= d2;
+            a[3] ^= d3;
+            a[4] ^= d4;
+            a[5] ^= d0;
+            a[6] ^= d1;
+            a[7] ^= d2;
+            a[8] ^= d3;
+            a[9] ^= d4;
+            a[10] ^= d0;
+            a[11] ^= d1;
+            a[12] ^= d2;
+            a[13] ^= d3;
+            a[14] ^= d4;
+            a[15] ^= d0;
+            a[16] ^= d1;
+            a[17] ^= d2;
+            a[18] ^= d3;
+            a[19] ^= d4;
+            a[20] ^= d0;
+            a[21] ^= d1;
+            a[22] ^= d2;
+            a[23] ^= d3;
+            a[24] ^= d4;
+
+            // smPiRho
+            long tmp = Long.rotateLeft(a[10], 3);
+            a[10] = Long.rotateLeft(a[1], 1);
+            a[1] = Long.rotateLeft(a[6], 44);
+            a[6] = Long.rotateLeft(a[9], 20);
+            a[9] = Long.rotateLeft(a[22], 61);
+            a[22] = Long.rotateLeft(a[14], 39);
+            a[14] = Long.rotateLeft(a[20], 18);
+            a[20] = Long.rotateLeft(a[2], 62);
+            a[2] = Long.rotateLeft(a[12], 43);
+            a[12] = Long.rotateLeft(a[13], 25);
+            a[13] = Long.rotateLeft(a[19], 8);
+            a[19] = Long.rotateLeft(a[23], 56);
+            a[23] = Long.rotateLeft(a[15], 41);
+            a[15] = Long.rotateLeft(a[4], 27);
+            a[4] = Long.rotateLeft(a[24], 14);
+            a[24] = Long.rotateLeft(a[21], 2);
+            a[21] = Long.rotateLeft(a[8], 55);
+            a[8] = Long.rotateLeft(a[16], 45);
+            a[16] = Long.rotateLeft(a[5], 36);
+            a[5] = Long.rotateLeft(a[3], 28);
+            a[3] = Long.rotateLeft(a[18], 21);
+            a[18] = Long.rotateLeft(a[17], 15);
+            a[17] = Long.rotateLeft(a[11], 10);
+            a[11] = Long.rotateLeft(a[7], 6);
+            a[7] = tmp;
+
+            // smChi
+            long ay0 = a[0];
+            long ay1 = a[1];
+            long ay2 = a[2];
+            long ay3 = a[3];
+            long ay4 = a[4];
+            a[0] = ay0 ^ ((~ay1) & ay2);
+            a[1] = ay1 ^ ((~ay2) & ay3);
+            a[2] = ay2 ^ ((~ay3) & ay4);
+            a[3] = ay3 ^ ((~ay4) & ay0);
+            a[4] = ay4 ^ ((~ay0) & ay1);
+            ay0 = a[5];
+            ay1 = a[6];
+            ay2 = a[7];
+            ay3 = a[8];
+            ay4 = a[9];
+            a[5] = ay0 ^ ((~ay1) & ay2);
+            a[6] = ay1 ^ ((~ay2) & ay3);
+            a[7] = ay2 ^ ((~ay3) & ay4);
+            a[8] = ay3 ^ ((~ay4) & ay0);
+            a[9] = ay4 ^ ((~ay0) & ay1);
+            ay0 = a[10];
+            ay1 = a[11];
+            ay2 = a[12];
+            ay3 = a[13];
+            ay4 = a[14];
+            a[10] = ay0 ^ ((~ay1) & ay2);
+            a[11] = ay1 ^ ((~ay2) & ay3);
+            a[12] = ay2 ^ ((~ay3) & ay4);
+            a[13] = ay3 ^ ((~ay4) & ay0);
+            a[14] = ay4 ^ ((~ay0) & ay1);
+            ay0 = a[15];
+            ay1 = a[16];
+            ay2 = a[17];
+            ay3 = a[18];
+            ay4 = a[19];
+            a[15] = ay0 ^ ((~ay1) & ay2);
+            a[16] = ay1 ^ ((~ay2) & ay3);
+            a[17] = ay2 ^ ((~ay3) & ay4);
+            a[18] = ay3 ^ ((~ay4) & ay0);
+            a[19] = ay4 ^ ((~ay0) & ay1);
+            ay0 = a[20];
+            ay1 = a[21];
+            ay2 = a[22];
+            ay3 = a[23];
+            ay4 = a[24];
+            a[20] = ay0 ^ ((~ay1) & ay2);
+            a[21] = ay1 ^ ((~ay2) & ay3);
+            a[22] = ay2 ^ ((~ay3) & ay4);
+            a[23] = ay3 ^ ((~ay4) & ay0);
+            a[24] = ay4 ^ ((~ay0) & ay1);
+
+            // smIota
+            a[0] ^= RC_CONSTANTS[ir];
+        }
+        // convert the resulting 25 lanes back into 200-byte state
+        lanes2Bytes(lanes, state);
+    }
+
+    private void keccak_3_inlined_unrolled_localvars() {
+        // convert the 200-byte state into 25 lanes
+        bytes2Lanes(state, lanes);
+        long a0 = lanes[0];
+        long a1 = lanes[1];
+        long a2 = lanes[2];
+        long a3 = lanes[3];
+        long a4 = lanes[4];
+        long a5 = lanes[5];
+        long a6 = lanes[6];
+        long a7 = lanes[7];
+        long a8 = lanes[8];
+        long a9 = lanes[9];
+        long a10 = lanes[10];
+        long a11 = lanes[11];
+        long a12 = lanes[12];
+        long a13 = lanes[13];
+        long a14 = lanes[14];
+        long a15 = lanes[15];
+        long a16 = lanes[16];
+        long a17 = lanes[17];
+        long a18 = lanes[18];
+        long a19 = lanes[19];
+        long a20 = lanes[20];
+        long a21 = lanes[21];
+        long a22 = lanes[22];
+        long a23 = lanes[23];
+        long a24 = lanes[24];
+
+        // process the lanes through step mappings
+        for (int ir = 0; ir < NR; ir++) {
+            long c0 = a0^a5^a10^a15^a20;
+            long c1 = a1^a6^a11^a16^a21;
+            long c2 = a2^a7^a12^a17^a22;
+            long c3 = a3^a8^a13^a18^a23;
+            long c4 = a4^a9^a14^a19^a24;
+            long d0 = c4 ^ Long.rotateLeft(c1, 1);
+            long d1 = c0 ^ Long.rotateLeft(c2, 1);
+            long d2 = c1 ^ Long.rotateLeft(c3, 1);
+            long d3 = c2 ^ Long.rotateLeft(c4, 1);
+            long d4 = c3 ^ Long.rotateLeft(c0, 1);
+            a0 ^= d0;
+            a1 ^= d1;
+            a2 ^= d2;
+            a3 ^= d3;
+            a4 ^= d4;
+            a5 ^= d0;
+            a6 ^= d1;
+            a7 ^= d2;
+            a8 ^= d3;
+            a9 ^= d4;
+            a10 ^= d0;
+            a11 ^= d1;
+            a12 ^= d2;
+            a13 ^= d3;
+            a14 ^= d4;
+            a15 ^= d0;
+            a16 ^= d1;
+            a17 ^= d2;
+            a18 ^= d3;
+            a19 ^= d4;
+            a20 ^= d0;
+            a21 ^= d1;
+            a22 ^= d2;
+            a23 ^= d3;
+            a24 ^= d4;
+
+            // smPiRho
+            long tmp = Long.rotateLeft(a10, 3);
+            a10 = Long.rotateLeft(a1, 1);
+            a1 = Long.rotateLeft(a6, 44);
+            a6 = Long.rotateLeft(a9, 20);
+            a9 = Long.rotateLeft(a22, 61);
+            a22 = Long.rotateLeft(a14, 39);
+            a14 = Long.rotateLeft(a20, 18);
+            a20 = Long.rotateLeft(a2, 62);
+            a2 = Long.rotateLeft(a12, 43);
+            a12 = Long.rotateLeft(a13, 25);
+            a13 = Long.rotateLeft(a19, 8);
+            a19 = Long.rotateLeft(a23, 56);
+            a23 = Long.rotateLeft(a15, 41);
+            a15 = Long.rotateLeft(a4, 27);
+            a4 = Long.rotateLeft(a24, 14);
+            a24 = Long.rotateLeft(a21, 2);
+            a21 = Long.rotateLeft(a8, 55);
+            a8 = Long.rotateLeft(a16, 45);
+            a16 = Long.rotateLeft(a5, 36);
+            a5 = Long.rotateLeft(a3, 28);
+            a3 = Long.rotateLeft(a18, 21);
+            a18 = Long.rotateLeft(a17, 15);
+            a17 = Long.rotateLeft(a11, 10);
+            a11 = Long.rotateLeft(a7, 6);
+            a7 = tmp;
+
+            // smChi
+            long ay0 = a0;
+            long ay1 = a1;
+            long ay2 = a2;
+            long ay3 = a3;
+            long ay4 = a4;
+            a0 = ay0 ^ ((~ay1) & ay2);
+            a1 = ay1 ^ ((~ay2) & ay3);
+            a2 = ay2 ^ ((~ay3) & ay4);
+            a3 = ay3 ^ ((~ay4) & ay0);
+            a4 = ay4 ^ ((~ay0) & ay1);
+            ay0 = a5;
+            ay1 = a6;
+            ay2 = a7;
+            ay3 = a8;
+            ay4 = a9;
+            a5 = ay0 ^ ((~ay1) & ay2);
+            a6 = ay1 ^ ((~ay2) & ay3);
+            a7 = ay2 ^ ((~ay3) & ay4);
+            a8 = ay3 ^ ((~ay4) & ay0);
+            a9 = ay4 ^ ((~ay0) & ay1);
+            ay0 = a10;
+            ay1 = a11;
+            ay2 = a12;
+            ay3 = a13;
+            ay4 = a14;
+            a10 = ay0 ^ ((~ay1) & ay2);
+            a11 = ay1 ^ ((~ay2) & ay3);
+            a12 = ay2 ^ ((~ay3) & ay4);
+            a13 = ay3 ^ ((~ay4) & ay0);
+            a14 = ay4 ^ ((~ay0) & ay1);
+            ay0 = a15;
+            ay1 = a16;
+            ay2 = a17;
+            ay3 = a18;
+            ay4 = a19;
+            a15 = ay0 ^ ((~ay1) & ay2);
+            a16 = ay1 ^ ((~ay2) & ay3);
+            a17 = ay2 ^ ((~ay3) & ay4);
+            a18 = ay3 ^ ((~ay4) & ay0);
+            a19 = ay4 ^ ((~ay0) & ay1);
+            ay0 = a20;
+            ay1 = a21;
+            ay2 = a22;
+            ay3 = a23;
+            ay4 = a24;
+            a20 = ay0 ^ ((~ay1) & ay2);
+            a21 = ay1 ^ ((~ay2) & ay3);
+            a22 = ay2 ^ ((~ay3) & ay4);
+            a23 = ay3 ^ ((~ay4) & ay0);
+            a24 = ay4 ^ ((~ay0) & ay1);
+
+            // smIota
+            a0 ^= RC_CONSTANTS[ir];
+        }
+
+        lanes[0] = a0;
+        lanes[1] = a1;
+        lanes[2] = a2;
+        lanes[3] = a3;
+        lanes[4] = a4;
+        lanes[5] = a5;
+        lanes[6] = a6;
+        lanes[7] = a7;
+        lanes[8] = a8;
+        lanes[9] = a9;
+        lanes[10] = a10;
+        lanes[11] = a11;
+        lanes[12] = a12;
+        lanes[13] = a13;
+        lanes[14] = a14;
+        lanes[15] = a15;
+        lanes[16] = a16;
+        lanes[17] = a17;
+        lanes[18] = a18;
+        lanes[19] = a19;
+        lanes[20] = a20;
+        lanes[21] = a21;
+        lanes[22] = a22;
+        lanes[23] = a23;
+        lanes[24] = a24;
+
         // convert the resulting 25 lanes back into 200-byte state
         lanes2Bytes(lanes, state);
     }
