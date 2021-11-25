@@ -1054,6 +1054,9 @@ Node *PhaseIdealLoop::split_if_with_blocks_pre( Node *n ) {
   // dominating control.
   if (n->in(0)) {
     Node *dom = idom(n_blk);
+    if (n->is_Load() && n->in(0)->is_Loop()) {
+      // let the pinned load to split thru phi
+    } else
     if (dom_lca(n->in(0), dom) != n->in(0)) {
       return n;
     }
