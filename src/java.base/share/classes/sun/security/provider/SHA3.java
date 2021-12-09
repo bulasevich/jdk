@@ -31,6 +31,8 @@ import java.nio.*;
 import java.util.*;
 import java.security.*;
 
+import jdk.internal.vm.annotation.ForceInline;
+
 /**
  * This class implements the Secure Hash Algorithm SHA-3 developed by
  * the National Institute of Standards and Technology along with the
@@ -161,6 +163,7 @@ abstract class SHA3 extends DigestBase {
     /**
      * Step mapping Theta as defined in section 3.2.1 .
      */
+    @ForceInline
     private static long[] smTheta(long[] a) {
         long c0 = a[0]^a[5]^a[10]^a[15]^a[20];
         long c1 = a[1]^a[6]^a[11]^a[16]^a[21];
@@ -172,13 +175,12 @@ abstract class SHA3 extends DigestBase {
         long d2 = c1 ^ Long.rotateLeft(c3, 1);
         long d3 = c2 ^ Long.rotateLeft(c4, 1);
         long d4 = c3 ^ Long.rotateLeft(c0, 1);
-        for (int y = 0; y < a.length; y += DM) {
-            a[y] ^= d0;
-            a[y+1] ^= d1;
-            a[y+2] ^= d2;
-            a[y+3] ^= d3;
-            a[y+4] ^= d4;
-        }
+        a[0]  ^= d0; a[1]  ^= d1; a[2]  ^= d2; a[3]  ^= d3; a[4]  ^= d4;
+        a[5]  ^= d0; a[6]  ^= d1; a[7]  ^= d2; a[8]  ^= d3; a[9]  ^= d4;
+        a[10] ^= d0; a[11] ^= d1; a[12] ^= d2; a[13] ^= d3; a[14] ^= d4;
+        a[15] ^= d0; a[16] ^= d1; a[17] ^= d2; a[18] ^= d3; a[19] ^= d4;
+        a[20] ^= d0; a[21] ^= d1; a[22] ^= d2; a[23] ^= d3; a[24] ^= d4;
+
         return a;
     }
 
@@ -195,6 +197,7 @@ abstract class SHA3 extends DigestBase {
      *   }
      * and with inplace permutation.
      */
+    @ForceInline
     private static long[] smPiRho(long[] a) {
         long tmp = Long.rotateLeft(a[10], 3);
         a[10] = Long.rotateLeft(a[1], 1);
@@ -224,28 +227,37 @@ abstract class SHA3 extends DigestBase {
         return a;
     }
 
+    @ForceInline
+    private static void smChiBody(long[] a, int y) {
+        long ay0 = a[y];
+        long ay1 = a[y+1];
+        long ay2 = a[y+2];
+        long ay3 = a[y+3];
+        long ay4 = a[y+4];
+        a[y] = ay0 ^ ((~ay1) & ay2);
+        a[y+1] = ay1 ^ ((~ay2) & ay3);
+        a[y+2] = ay2 ^ ((~ay3) & ay4);
+        a[y+3] = ay3 ^ ((~ay4) & ay0);
+        a[y+4] = ay4 ^ ((~ay0) & ay1);
+    }
+
     /**
      * Step mapping Chi as defined in section 3.2.4.
      */
+    @ForceInline
     private static long[] smChi(long[] a) {
-        for (int y = 0; y < a.length; y+=DM) {
-            long ay0 = a[y];
-            long ay1 = a[y+1];
-            long ay2 = a[y+2];
-            long ay3 = a[y+3];
-            long ay4 = a[y+4];
-            a[y] = ay0 ^ ((~ay1) & ay2);
-            a[y+1] = ay1 ^ ((~ay2) & ay3);
-            a[y+2] = ay2 ^ ((~ay3) & ay4);
-            a[y+3] = ay3 ^ ((~ay4) & ay0);
-            a[y+4] = ay4 ^ ((~ay0) & ay1);
-        }
+        smChiBody(a, 0);
+        smChiBody(a, 5);
+        smChiBody(a, 10);
+        smChiBody(a, 15);
+        smChiBody(a, 20);
         return a;
     }
 
     /**
      * Step mapping Iota as defined in section 3.2.5.
      */
+    @ForceInline
     private static long[] smIota(long[] a, int rndIndex) {
         a[0] ^= RC_CONSTANTS[rndIndex];
         return a;
