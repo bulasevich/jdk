@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -165,21 +165,21 @@ abstract class SHA3 extends DigestBase {
      */
     @ForceInline
     private static long[] smTheta(long[] a) {
-        long c0 = a[0]^a[5]^a[10]^a[15]^a[20];
-        long c1 = a[1]^a[6]^a[11]^a[16]^a[21];
-        long c2 = a[2]^a[7]^a[12]^a[17]^a[22];
-        long c3 = a[3]^a[8]^a[13]^a[18]^a[23];
-        long c4 = a[4]^a[9]^a[14]^a[19]^a[24];
+        long c0 = a[0*DM+0] ^ a[1*DM+0] ^ a[2*DM+0] ^ a[3*DM+0] ^ a[4*DM+0];
+        long c1 = a[0*DM+1] ^ a[1*DM+1] ^ a[2*DM+1] ^ a[3*DM+1] ^ a[4*DM+1];
+        long c2 = a[0*DM+2] ^ a[1*DM+2] ^ a[2*DM+2] ^ a[3*DM+2] ^ a[4*DM+2];
+        long c3 = a[0*DM+3] ^ a[1*DM+3] ^ a[2*DM+3] ^ a[3*DM+3] ^ a[4*DM+3];
+        long c4 = a[0*DM+4] ^ a[1*DM+4] ^ a[2*DM+4] ^ a[3*DM+4] ^ a[4*DM+4];
         long d0 = c4 ^ Long.rotateLeft(c1, 1);
         long d1 = c0 ^ Long.rotateLeft(c2, 1);
         long d2 = c1 ^ Long.rotateLeft(c3, 1);
         long d3 = c2 ^ Long.rotateLeft(c4, 1);
         long d4 = c3 ^ Long.rotateLeft(c0, 1);
-        a[0]  ^= d0; a[1]  ^= d1; a[2]  ^= d2; a[3]  ^= d3; a[4]  ^= d4;
-        a[5]  ^= d0; a[6]  ^= d1; a[7]  ^= d2; a[8]  ^= d3; a[9]  ^= d4;
-        a[10] ^= d0; a[11] ^= d1; a[12] ^= d2; a[13] ^= d3; a[14] ^= d4;
-        a[15] ^= d0; a[16] ^= d1; a[17] ^= d2; a[18] ^= d3; a[19] ^= d4;
-        a[20] ^= d0; a[21] ^= d1; a[22] ^= d2; a[23] ^= d3; a[24] ^= d4;
+        a[0*DM+0] ^= d0; a[0*DM+1] ^= d1; a[0*DM+2] ^= d2; a[0*DM+3] ^= d3; a[0*DM+4] ^= d4;
+        a[1*DM+0] ^= d0; a[1*DM+1] ^= d1; a[1*DM+2] ^= d2; a[1*DM+3] ^= d3; a[1*DM+4] ^= d4;
+        a[2*DM+0] ^= d0; a[2*DM+1] ^= d1; a[2*DM+2] ^= d2; a[2*DM+3] ^= d3; a[2*DM+4] ^= d4;
+        a[3*DM+0] ^= d0; a[3*DM+1] ^= d1; a[3*DM+2] ^= d2; a[3*DM+3] ^= d3; a[3*DM+4] ^= d4;
+        a[4*DM+0] ^= d0; a[4*DM+1] ^= d1; a[4*DM+2] ^= d2; a[4*DM+3] ^= d3; a[4*DM+4] ^= d4;
 
         return a;
     }
@@ -246,11 +246,11 @@ abstract class SHA3 extends DigestBase {
      */
     @ForceInline
     private static long[] smChi(long[] a) {
-        smChiBody(a, 0);
-        smChiBody(a, 5);
-        smChiBody(a, 10);
-        smChiBody(a, 15);
-        smChiBody(a, 20);
+        smChiBody(a, 0*DM);
+        smChiBody(a, 1*DM);
+        smChiBody(a, 2*DM);
+        smChiBody(a, 3*DM);
+        smChiBody(a, 4*DM);
         return a;
     }
 
