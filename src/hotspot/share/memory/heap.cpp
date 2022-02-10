@@ -383,7 +383,6 @@ void CodeHeap::deallocate(void* p) {
  *  - The size must be a power of two to allow the use of shift operations
  *    to quickly convert between segment index and segment address.
  *  - Segment start addresses should be aligned to be multiples of CodeCacheSegmentSize.
- *  - It seems beneficial for CodeCacheSegmentSize to be equal to os::page_size().
  *  - Allocation in the code cache can only happen at segment start addresses.
  *  - Allocation in the code cache is in units of CodeCacheSegmentSize.
  *  - A pointer in the code cache can be mapped to a segment by calling
