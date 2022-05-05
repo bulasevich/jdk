@@ -88,7 +88,6 @@ class CodeBlob {
 
 protected:
 
-  const CompilerType _type;                      // CompilerType
   int        _size;                              // total size of CodeBlob in bytes
   int        _header_size;                       // size of header (depends on subclass)
   int        _frame_complete_offset;             // instruction offsets in [0.._frame_complete_offset) have
@@ -97,6 +96,9 @@ protected:
                                                  // which we don't detect.
   int        _data_offset;                       // offset to where data region begins
   int        _frame_size;                        // size of stack frame
+
+  bool       _caller_must_gc_arguments;
+  const CompilerType _type;                      // CompilerType
 
   address    _code_begin;
   address    _code_end;
@@ -107,7 +109,6 @@ protected:
   address    _relocation_end;
 
   ImmutableOopMapSet* _oop_maps;                 // OopMap for this CodeBlob
-  bool                _caller_must_gc_arguments;
 
   const char*         _name;
   S390_ONLY(int       _ctable_offset;)

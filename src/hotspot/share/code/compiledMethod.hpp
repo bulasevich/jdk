@@ -144,13 +144,13 @@ class CompiledMethod : public CodeBlob {
 
   void init_defaults();
 protected:
-  enum MarkForDeoptimizationStatus {
+  enum MarkForDeoptimizationStatus : uint8_t {
     not_marked,
     deoptimize,
     deoptimize_noupdate
   };
 
-  MarkForDeoptimizationStatus _mark_for_deoptimization_status; // Used for stack deoptimization
+  MarkForDeoptimizationStatus _mark_for_deoptimization_status:3; // Used for stack deoptimization
 
   // set during construction
   unsigned int _has_unsafe_access:1;         // May fault due to unsafe access.

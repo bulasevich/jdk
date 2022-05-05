@@ -70,9 +70,6 @@ class nmethod : public CompiledMethod {
   friend class JVMCINMethodData;
 
  private:
-  // Shared fields for all nmethod's
-  int       _entry_bci;        // != InvocationEntryBci if this nmethod is an on-stack replacement method
-
   // To support simple linked-list chaining of nmethods:
   nmethod*  _osr_link;         // from InstanceKlass::osr_nmethods_head
 
@@ -223,26 +220,29 @@ class nmethod : public CompiledMethod {
   int _orig_pc_offset;
 
   int _compile_id;                           // which compilation made this nmethod
-  int _comp_level;                           // compilation level
+  int8_t _comp_level;                        // compilation level
 
   // protected by CodeCache_lock
-  bool _has_flushed_dependencies;            // Used for maintenance of dependencies (CodeCache_lock)
+  bool _has_flushed_dependencies:1;          // Used for maintenance of dependencies (CodeCache_lock)
 
   // used by jvmti to track if an event has been posted for this nmethod.
-  bool _unload_reported;
-  bool _load_reported;
-
-  // Protected by CompiledMethod_lock
-  volatile signed char _state;               // {not_installed, in_use, not_entrant, zombie, unloaded}
-
-#ifdef ASSERT
-  bool _oops_are_stale;  // indicates that it's no longer safe to access oops section
-#endif
+  bool _unload_reported:1;
+  bool _load_reported:1;
 
 #if INCLUDE_RTM_OPT
   // RTM state at compile time. Used during deoptimization to decide
   // whether to restart collecting RTM locking abort statistic again.
-  RTMState _rtm_state;
+  RTMState _rtm_state:2;
+#endif
+
+  // Protected by CompiledMethod_lock
+  volatile signed char _state;               // {not_installed, in_use, not_entrant, zombie, unloaded}
+
+  // Local state used to keep track of whether unloading is happening or not
+  volatile uint8_t _is_unloading_state;
+
+#ifdef ASSERT
+  bool _oops_are_stale;  // indicates that it's no longer safe to access oops section
 #endif
 
   // Nmethod Flushing lock. If non-zero, then the nmethod is not removed
@@ -250,6 +250,9 @@ class nmethod : public CompiledMethod {
   // a zombie, it will be locked one final time if CompiledMethodUnload
   // event processing needs to be done.
   volatile jint _lock_count;
+
+  // Shared fields for all nmethod's
+  int       _entry_bci;        // != InvocationEntryBci if this nmethod is an on-stack replacement method
 
   // not_entrant method removal. Each mark_sweep pass will update
   // this mark to current sweep invocation count if it is seen on the
@@ -264,9 +267,6 @@ class nmethod : public CompiledMethod {
   // is active while stack scanning (do_stack_scanning()). The hotness
   // counter is decreased (by 1) while sweeping.
   int _hotness_counter;
-
-  // Local state used to keep track of whether unloading is happening or not
-  volatile uint8_t _is_unloading_state;
 
   // These are used for compiled synchronized native methods to
   // locate the owner and stack slot for the BasicLock. They are

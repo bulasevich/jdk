@@ -31,7 +31,7 @@
 #include "runtime/globals.hpp"
 
 // The (closed set) of concrete compiler classes.
-enum CompilerType {
+enum CompilerType : uint8_t {
   compiler_none,
   compiler_c1,
   compiler_c2,
@@ -102,7 +102,7 @@ inline bool is_compile(int comp_level) {
 
 
 // States of Restricted Transactional Memory usage.
-enum RTMState {
+enum RTMState : uint8_t {
   NoRTM      = 0x2, // Don't use RTM
   UseRTM     = 0x1, // Use RTM
   ProfileRTM = 0x0  // Use RTM with abort ratio calculation
