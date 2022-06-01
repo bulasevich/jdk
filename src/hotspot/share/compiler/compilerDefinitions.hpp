@@ -31,7 +31,7 @@
 #include "runtime/globals.hpp"
 
 // The (closed set) of concrete compiler classes.
-enum CompilerType {
+enum CompilerType : u1 {
   compiler_none,
   compiler_c1,
   compiler_c2,
@@ -43,7 +43,7 @@ extern const char* compilertype2name_tab[compiler_number_of_types];     // Map C
 inline const char* compilertype2name(CompilerType t) { return (uint)t < compiler_number_of_types ? compilertype2name_tab[t] : NULL; }
 
 // Handy constants for deciding which compiler mode to use.
-enum MethodCompilation {
+enum MethodCompilation : s1 {
   InvocationEntryBci   = -1,     // i.e., not a on-stack replacement compilation
   BeforeBci            = InvocationEntryBci,
   AfterBci             = -2,
@@ -54,7 +54,7 @@ enum MethodCompilation {
 };
 
 // Enumeration to distinguish tiers of compilation
-enum CompLevel {
+enum CompLevel : s1 {
   CompLevel_any               = -1,        // Used for querying the state
   CompLevel_all               = -1,        // Used for changing the state
   CompLevel_none              = 0,         // Interpreter
