@@ -645,7 +645,7 @@
   /* NMethods (NOTE: incomplete, but only a little) */                                                                               \
   /**************************************************/                                                                               \
                                                                                                                                      \
-  nonstatic_field(nmethod,                     _entry_bci,                                    MethodCompilation)                     \
+  nonstatic_field(nmethod,                     _entry_bci,                                    int)                                   \
   nonstatic_field(nmethod,                     _osr_link,                                     nmethod*)                              \
   nonstatic_field(nmethod,                     _state,                                        volatile signed char)                  \
   nonstatic_field(nmethod,                     _exception_offset,                             int)                                   \

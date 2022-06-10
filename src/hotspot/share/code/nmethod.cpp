@@ -758,9 +758,9 @@ nmethod::nmethod(
     _deopt_mh_handler_begin = (address) this;
 
     init_defaults();
-    _comp_level              = comp_level;
-    _entry_bci               = (MethodCompilation)entry_bci;
+    _entry_bci               = entry_bci;
     _compile_id              = compile_id;
+    _comp_level              = comp_level;
     _orig_pc_offset          = orig_pc_offset;
     _hotness_counter         = NMethodSweeper::hotness_counter_reset_val();
     _gc_epoch                = Continuations::gc_epoch();

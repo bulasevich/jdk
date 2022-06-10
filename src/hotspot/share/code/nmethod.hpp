@@ -71,6 +71,16 @@ class nmethod : public CompiledMethod {
   friend class JVMCINMethodData;
 
  private:
+
+  uint64_t  _gc_epoch;
+
+  // not_entrant method removal. Each mark_sweep pass will update
+  // this mark to current sweep invocation count if it is seen on the
+  // stack.  An not_entrant method can be removed when there are no
+  // more activations, i.e., when the _stack_traversal_mark is less than
+  // current sweep traversal index.
+  volatile int64_t _stack_traversal_mark;
+
   // To support simple linked-list chaining of nmethods:
   nmethod*  _osr_link;         // from InstanceKlass::osr_nmethods_head
 
@@ -193,14 +203,8 @@ class nmethod : public CompiledMethod {
   address _verified_entry_point;             // entry point without class check
   address _osr_entry_point;                  // entry point for on stack replacement
 
-  uint64_t  _gc_epoch;
-
-  // not_entrant method removal. Each mark_sweep pass will update
-  // this mark to current sweep invocation count if it is seen on the
-  // stack.  An not_entrant method can be removed when there are no
-  // more activations, i.e., when the _stack_traversal_mark is less than
-  // current sweep traversal index.
-  volatile int64_t _stack_traversal_mark;
+  // Shared fields for all nmethod's
+  int _entry_bci;      // != InvocationEntryBci if this nmethod is an on-stack replacement method
 
   // Offsets for different nmethod parts
   int  _exception_offset;
@@ -261,9 +265,6 @@ class nmethod : public CompiledMethod {
   ByteSize _native_basic_lock_sp_offset;
 
   CompLevel _comp_level;               // compilation level
-
-  // Shared fields for all nmethod's
-  MethodCompilation   _entry_bci;      // != InvocationEntryBci if this nmethod is an on-stack replacement method
 
   // Local state used to keep track of whether unloading is happening or not
   volatile uint8_t _is_unloading_state;
