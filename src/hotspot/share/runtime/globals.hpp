@@ -649,6 +649,9 @@ const int ObjectAlignmentInBytes = 8;
   product(bool, PrintStubCode, false, DIAGNOSTIC,                           \
           "Print generated stub code")                                      \
                                                                             \
+  product(bool, TraceRuntimeBlobs, false, DIAGNOSTIC,                       \
+          "Trace nonnmethod blobs")                                         \
+                                                                            \
   product(bool, StackTraceInThrowable, true,                                \
           "Collect backtrace in throwable when exception happens")          \
                                                                             \

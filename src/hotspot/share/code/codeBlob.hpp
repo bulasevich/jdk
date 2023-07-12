@@ -383,6 +383,8 @@ class RuntimeBlob : public CodeBlob {
   virtual void print_on(outputStream* st) const { CodeBlob::print_on(st); }
   virtual void print_value_on(outputStream* st) const { CodeBlob::print_value_on(st); }
 
+  static void trace_new_blob(RuntimeBlob* blob, const char* name1, const char* name2);
+
   // Deal with Disassembler, VTune, Forte, JvmtiExport, MemoryService.
   static void trace_new_stub(RuntimeBlob* blob, const char* name1, const char* name2 = "");
 };
@@ -413,7 +415,6 @@ class BufferBlob: public RuntimeBlob {
  public:
   // Creation
   static BufferBlob* create(const char* name, int buffer_size);
-  static BufferBlob* create(const char* name, CodeBuffer* cb);
 
   static void free(BufferBlob* buf);
 

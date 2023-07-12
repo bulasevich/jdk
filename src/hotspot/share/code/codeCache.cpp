@@ -593,6 +593,9 @@ void CodeCache::free(CodeBlob* cb) {
   if (cb->is_adapter_blob()) {
     heap->set_adapter_count(heap->adapter_count() - 1);
   }
+  if (TraceRuntimeBlobs && cb->compiler_type() == CompilerType::compiler_none) {
+    tty->print_cr("free: size=%i [%p]", cb->size(), cb->code_begin());
+  }
 
   // Get heap for given CodeBlob and deallocate
   get_code_heap(cb)->deallocate(cb);

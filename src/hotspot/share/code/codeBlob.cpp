@@ -190,10 +190,35 @@ void CodeBlob::set_oop_maps(OopMapSet* p) {
   }
 }
 
+/**
+ * RuntimeBlob::trace_new_stub traces the following Runtime stubs allocations:
+ *   RuntimeStub         : Call to VM runtime methods
+ *   SingletonBlob       : Super-class for all blobs that exist in only one instance
+ *    DeoptimizationBlob : Used for deoptimization
+ *    ExceptionBlob      : Used for stack unrolling
+ *    SafepointBlob      : Used to handle illegal instruction exceptions
+ *    UncommonTrapBlob   : Used to handle uncommon traps
+ *   UpcallStub  : Used for upcalls from native code
+ *
+ * RuntimeBlob::trace_new_blob traces the remaining Runtime Blobs allocations:
+ *   BufferBlob          : Used for non-relocatable code such as interpreter, stubroutines, etc.
+ *    AdapterBlob        : Used to hold C2I/I2C adapters
+ *    VtableBlob         : Used for holding vtable chunks
+ *    MethodHandlesAdapterBlob : Used to hold MethodHandles adapters
+ */
+void RuntimeBlob::trace_new_blob(RuntimeBlob* blob, const char* name1, const char* name2) {
+  if (TraceRuntimeBlobs) {
+    tty->print_cr("%s %s size:%i [%p]", name1, name2, blob->size(), blob->code_begin());
+  }
+}
 
 void RuntimeBlob::trace_new_stub(RuntimeBlob* stub, const char* name1, const char* name2) {
   // Do not hold the CodeCache lock during name formatting.
   assert(!CodeCache_lock->owned_by_self(), "release CodeCache before registering the stub");
+
+  if (TraceRuntimeBlobs) {
+    tty->print_cr("%s %s size:%i [%p]", name1, name2, stub->size(), stub->code_begin());
+  }
 
   if (stub != nullptr && (PrintStubCode ||
                        Forte::is_enabled() ||
@@ -263,6 +288,8 @@ BufferBlob* BufferBlob::create(const char* name, int buffer_size) {
   // Track memory usage statistic after releasing CodeCache_lock
   MemoryService::track_code_cache_memory_usage();
 
+  RuntimeBlob::trace_new_blob(blob, "BufferBlob", name);
+
   return blob;
 }
 
@@ -270,22 +297,6 @@ BufferBlob* BufferBlob::create(const char* name, int buffer_size) {
 BufferBlob::BufferBlob(const char* name, int size, CodeBuffer* cb)
   : RuntimeBlob(name, cb, sizeof(BufferBlob), size, CodeOffsets::frame_never_safe, 0, nullptr)
 {}
-
-BufferBlob* BufferBlob::create(const char* name, CodeBuffer* cb) {
-  ThreadInVMfromUnknown __tiv;  // get to VM state in case we block on CodeCache_lock
-
-  BufferBlob* blob = nullptr;
-  unsigned int size = CodeBlob::allocation_size(cb, sizeof(BufferBlob));
-  assert(name != nullptr, "must provide a name");
-  {
-    MutexLocker mu(CodeCache_lock, Mutex::_no_safepoint_check_flag);
-    blob = new (size) BufferBlob(name, size, cb);
-  }
-  // Track memory usage statistic after releasing CodeCache_lock
-  MemoryService::track_code_cache_memory_usage();
-
-  return blob;
-}
 
 void* BufferBlob::operator new(size_t s, unsigned size) throw() {
   return CodeCache::allocate(size, CodeBlobType::NonNMethod);
@@ -317,6 +328,8 @@ AdapterBlob* AdapterBlob::create(CodeBuffer* cb) {
   }
   // Track memory usage statistic after releasing CodeCache_lock
   MemoryService::track_code_cache_memory_usage();
+
+  RuntimeBlob::trace_new_blob(blob, "AdapterBlob", "");
 
   return blob;
 }
@@ -364,6 +377,8 @@ VtableBlob* VtableBlob::create(const char* name, int buffer_size) {
   // Track memory usage statistic after releasing CodeCache_lock
   MemoryService::track_code_cache_memory_usage();
 
+  RuntimeBlob::trace_new_blob(blob, "VtableBlob", name);
+
   return blob;
 }
 
@@ -387,6 +402,8 @@ MethodHandlesAdapterBlob* MethodHandlesAdapterBlob::create(int buffer_size) {
   }
   // Track memory usage statistic after releasing CodeCache_lock
   MemoryService::track_code_cache_memory_usage();
+
+  RuntimeBlob::trace_new_blob(blob, "MethodHandlesAdapterBlob", "");
 
   return blob;
 }
@@ -422,7 +439,7 @@ RuntimeStub* RuntimeStub::new_runtime_stub(const char* stub_name,
     stub = new (size) RuntimeStub(stub_name, cb, size, frame_complete, frame_size, oop_maps, caller_must_gc_arguments);
   }
 
-  trace_new_stub(stub, "RuntimeStub - ", stub_name);
+  trace_new_stub(stub, "RuntimeStub", stub_name);
 
   return stub;
 }
