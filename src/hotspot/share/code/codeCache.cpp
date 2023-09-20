@@ -466,8 +466,9 @@ bool CodeCache::heap_available(CodeBlobType code_blob_type) {
     // Tiered compilation: use all code heaps
     return (code_blob_type < CodeBlobType::All);
   } else {
-    // No TieredCompilation: we only need the non-nmethod and non-profiled code heap
-    return (code_blob_type == CodeBlobType::NonNMethod) ||
+    // No TieredCompilation: we only need the non-nmethod, non-profiled and hot code heap
+    return (code_blob_type == CodeBlobType::MethodHot) ||
+           (code_blob_type == CodeBlobType::NonNMethod) ||
            (code_blob_type == CodeBlobType::MethodNonProfiled);
   }
 }
@@ -482,6 +483,9 @@ const char* CodeCache::get_code_heap_flag_name(CodeBlobType code_blob_type) {
     break;
   case CodeBlobType::MethodProfiled:
     return "ProfiledCodeHeapSize";
+    break;
+  case CodeBlobType::MethodHot:
+    return "HotCodeHeapSize";
     break;
   default:
     ShouldNotReachHere();
@@ -602,7 +606,7 @@ CodeBlob* CodeCache::allocate(int size, CodeBlobType code_blob_type, bool handle
 
   // Get CodeHeap for the given CodeBlobType
   CodeHeap* heap = get_code_heap(code_blob_type);
-  assert(heap != nullptr, "heap is null");
+  assert(heap != nullptr, "No heap for given code_blob_type %d, heap is null", (int) code_blob_type);
 
   while (true) {
     cb = (CodeBlob*)heap->allocate(size);
@@ -618,6 +622,10 @@ CodeBlob* CodeCache::allocate(int size, CodeBlobType code_blob_type, bool handle
         // NonNMethod -> MethodNonProfiled -> MethodProfiled (-> MethodNonProfiled)
         CodeBlobType type = code_blob_type;
         switch (type) {
+        case CodeBlobType::MethodHot:
+          log_info(codecache, hot)("Hot segment is full. Fallback to NonProfiled heap.");
+          type = CodeBlobType::MethodNonProfiled;
+          break;
         case CodeBlobType::NonNMethod:
           type = CodeBlobType::MethodNonProfiled;
           break;
@@ -634,6 +642,9 @@ CodeBlob* CodeCache::allocate(int size, CodeBlobType code_blob_type, bool handle
           break;
         }
         if (type != code_blob_type && type != orig_code_blob_type && heap_available(type)) {
+          log_info(codecache)("Allocation in %s failed. Fallback to %s heap.",
+                          heap->name(), get_code_heap(type)->name());
+
           if (PrintCodeCacheExtension) {
             tty->print_cr("Extension of %s failed. Trying to allocate in %s.",
                           heap->name(), get_code_heap(type)->name());
@@ -1657,7 +1668,14 @@ void CodeCache::print_trace(const char* event, CodeBlob* cb, int size) {
   if (PrintCodeCache2) {  // Need to add a new flag
     ResourceMark rm;
     if (size == 0)  size = cb->size();
-    tty->print_cr("CodeCache %s:  addr: " INTPTR_FORMAT ", size: 0x%x", event, p2i(cb), size);
+    tty->print("CodeCache %s:  addr: " INTPTR_FORMAT ", size: 0x%x", event, p2i(cb), size);
+    FOR_ALL_HEAPS(heap) {
+      CodeHeap* curr_heap = *heap;
+      if (curr_heap->contains_blob(cb)) {
+        tty->print(" heap: %s", curr_heap->name());
+      }
+    }
+    tty->cr();
   }
 }
 
