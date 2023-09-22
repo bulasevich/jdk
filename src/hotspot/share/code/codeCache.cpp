@@ -532,7 +532,8 @@ CodeBlob* CodeCache::allocate(int size, CodeBlobType code_blob_type, bool handle
   assert(heap != nullptr, "heap is null");
 
   while (true) {
-    cb = (CodeBlob*)heap->allocate(size);
+    int alloc_size = ((EmulateFragmentation != 1) && (code_blob_type == CodeBlobType::MethodNonProfiled)) ? size * EmulateFragmentation : size;
+    cb = (CodeBlob*)heap->allocate(alloc_size);
     if (cb != nullptr) break;
     if (!heap->expand_by(CodeCacheExpansionSize)) {
       // Save original type for error reporting
