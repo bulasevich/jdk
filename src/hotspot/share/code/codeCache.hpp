@@ -111,6 +111,12 @@ class CodeCache : AllStatic {
 
   static ExceptionCache* volatile _exception_cache_purge_list;
 
+  static PerfVariable* _perf_hot_blocks;
+  static PerfVariable* _perf_hot_method_hotsegm_count;
+  static PerfVariable* _perf_hot_method_hotsegm_size;
+  static PerfVariable* _perf_hot_method_othersegm_count;
+  static PerfVariable* _perf_hot_method_othersegm_size;
+
   // CodeHeap management
   static void initialize_heaps();                             // Initializes the CodeHeaps
   static void report_cache_size_error(const CodeCacheSegment& non_nmethod, const CodeCacheSegment& profiled, const CodeCacheSegment& non_profiled, size_t cache_size);

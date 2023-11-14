@@ -178,6 +178,12 @@ GrowableArray<CodeHeap*>* CodeCache::_compiled_heaps = new(mtCode) GrowableArray
 GrowableArray<CodeHeap*>* CodeCache::_nmethod_heaps = new(mtCode) GrowableArray<CodeHeap*> (static_cast<int>(CodeBlobType::All), mtCode);
 GrowableArray<CodeHeap*>* CodeCache::_allocable_heaps = new(mtCode) GrowableArray<CodeHeap*> (static_cast<int>(CodeBlobType::All), mtCode);
 
+PerfVariable* CodeCache::_perf_hot_blocks = nullptr;
+PerfVariable* CodeCache::_perf_hot_method_hotsegm_count = nullptr;
+PerfVariable* CodeCache::_perf_hot_method_hotsegm_size = nullptr;
+PerfVariable* CodeCache::_perf_hot_method_othersegm_count = nullptr;
+PerfVariable* CodeCache::_perf_hot_method_othersegm_size = nullptr;
+
 /**
   1. Handle the most common case - user doesn't explicitly set any of the segment sizes
     Add space for compiler buffers to the Non-Nmethod segment and divide the rest in half between Profiled and Non-Profiled.
@@ -610,7 +616,7 @@ CodeBlob* CodeCache::allocate(int size, CodeBlobType code_blob_type, bool handle
   // Get CodeHeap for the given CodeBlobType
   CodeHeap* heap = get_code_heap(code_blob_type);
   assert(heap != nullptr, "No heap for given code_blob_type %d, heap is null", (int) code_blob_type);
-  if (code_blob_type == CodeBlobType::MethodHot && log_is_enabled(Debug, codecache, hot)) {
+  if (code_blob_type == CodeBlobType::MethodHot && (UsePerfData || log_is_enabled(Debug, codecache, hot))) {
     count_hot_method_sparsity();
   }
 
@@ -1308,6 +1314,20 @@ void CodeCache::initialize() {
   // This is used on Windows 64 bit platforms to register
   // Structured Exception Handlers for our generated code.
   os::register_code_area((char*)low_bound(), (char*)high_bound());
+
+  if (UsePerfData && HotCodeHeap) {
+    EXCEPTION_MARK;
+    _perf_hot_blocks = PerfDataManager::create_variable(SUN_CI,
+      "hotBlocks", PerfData::U_None, (jlong)0, CHECK);
+    _perf_hot_method_hotsegm_count = PerfDataManager::create_variable(SUN_CI,
+      "hotMethodsInHotSegment", PerfData::U_None, (jlong)0, CHECK);
+    _perf_hot_method_hotsegm_size = PerfDataManager::create_variable(SUN_CI,
+      "hotMethodsInHotSegmentSize", PerfData::U_None, (jlong)0, CHECK);
+    _perf_hot_method_othersegm_count = PerfDataManager::create_variable(SUN_CI,
+      "hotMethodsInOtherSegment", PerfData::U_None, (jlong)0, CHECK);
+    _perf_hot_method_othersegm_size = PerfDataManager::create_variable(SUN_CI,
+      "hotMethodsInOtherSegmentSize", PerfData::U_None, (jlong)0, CHECK);
+  }
 }
 
 void codeCache_init() {
@@ -1502,7 +1522,7 @@ void CodeCache::recompile_marked_directives_matches() {
       gc_on_allocation(); // Flush unused methods from CodeCache if required.
     }
   }
-  if (log_is_enabled(Debug, codecache, hot)) {
+  if (UsePerfData || log_is_enabled(Debug, codecache, hot)) {
     MutexLocker mu(CodeCache_lock, Mutex::_no_safepoint_check_flag);
     count_hot_method_sparsity();
   }
@@ -1920,6 +1940,11 @@ float CodeCache::count_hot_method_sparsity() {
   float result = (float)hot_blocks/number_of_blocks;
   log_debug(codecache, hot)("hot methods occupy %i blocks out of %i ~ %f; hot methods in/out of the MethodHot segment: %i/%i, %i/%iKB",
     hot_blocks, number_of_blocks, result, stat_methodhotsegm_count, stat_othersegm_count, stat_methodhotsegm_size/1024, stat_othersegm_size/1024);
+  _perf_hot_blocks->set_value(hot_blocks);
+  _perf_hot_method_hotsegm_count->set_value(stat_methodhotsegm_count);
+  _perf_hot_method_hotsegm_size->set_value(stat_methodhotsegm_size / 1024);
+  _perf_hot_method_othersegm_count->set_value(stat_othersegm_count);
+  _perf_hot_method_othersegm_size->set_value(stat_othersegm_size / 1024);
   return result;
 }
 
