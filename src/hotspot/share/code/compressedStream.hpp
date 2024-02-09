@@ -56,7 +56,7 @@ class CompressedStream : public ResourceObj {
                         bool inclusive_end = false) {
     // This is only useful for assertions, since not all streams
     // have known limit pointers.
-    return (limit == 0 || (position >= 0 &&
+    return (limit == 0 || ( // ## error: comparison of unsigned expression >= 0 is always true
                            (inclusive_end
                             ? position <= limit
                             : position <  limit)));

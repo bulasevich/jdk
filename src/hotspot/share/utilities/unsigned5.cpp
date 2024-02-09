@@ -101,14 +101,15 @@ void ZeroSuppressingU5::ZSReader<ARR,OFF,GET>::reset() {
 
 
 template<typename ARR, typename OFF, typename SET>
-void ZSWriter<ARR,OFF,SET>::setup(ARR array, OFF limit) {
+// ## error: invalid use of incomplete type 'class ZeroSuppressingU5::ZSWriter<ARR, OFF, SET>'
+void ZeroSuppressingU5::ZSWriter<ARR,OFF,SET>::setup(ARR array, OFF limit) {
   _sticky_passthrough = false;
   _w.setup(array, limit);
   reset();
 }
 
 template<typename ARR, typename OFF, typename SET>
-void ZSWriter<ARR,OFF,SET>::reset() {
+void ZeroSuppressingU5::ZSWriter<ARR,OFF,SET>::reset() {
   _w.reset();
   _suppressed_zeroes = 0;
   _zero_mask_length = 0;
@@ -121,20 +122,19 @@ void ZSWriter<ARR,OFF,SET>::reset() {
 }
 
 template<typename ARR, typename OFF, typename SET>
-void ZSWriter<ARR,OFF,SET>::grow_array(ARR array, OFF limit) {
+void ZeroSuppressingU5::ZSWriter<ARR,OFF,SET>::grow_array(ARR array, OFF limit) {
   _w.grow_array(array, limit);
 }
 
 template<typename ARR, typename OFF, typename SET>
-void ZSWriter<ARR,OFF,SET>::accept_end_byte() {
+void ZeroSuppressingU5::ZSWriter<ARR,OFF,SET>::accept_end_byte() {
   commit(false, false);
   _w.accept_end_byte();
   set_clean_or_passthrough();
 }
 
 template<typename ARR, typename OFF, typename SET>
-
-OFF ZSWriter<ARR,OFF,SET>::advance_position(OFF start, int count) {
+OFF ZeroSuppressingU5::ZSWriter<ARR,OFF,SET>::advance_position(OFF start, int count) {
   ARR arr = array();
   OFF pos = start;
   int rem = count;
@@ -153,7 +153,7 @@ OFF ZSWriter<ARR,OFF,SET>::advance_position(OFF start, int count) {
 int ZSWriter_extra_sanity_checks = 1000;
 
 template<typename ARR, typename OFF, typename SET>
-bool ZSWriter<ARR,OFF,SET>::sanity_checks() {
+bool ZeroSuppressingU5::ZSWriter<ARR,OFF,SET>::sanity_checks() {
   const int zmlen = _zero_mask_length;
   const int bklen = _block_length;
   if (is_passthrough()) {
@@ -190,7 +190,7 @@ bool ZSWriter<ARR,OFF,SET>::sanity_checks() {
 }
 
 template<typename ARR, typename OFF, typename SET>
-void ZSWriter<ARR,OFF,SET>::digest_multiple_uints(OFF start_pos, int count) {
+void ZeroSuppressingU5::ZSWriter<ARR,OFF,SET>::digest_multiple_uints(OFF start_pos, int count) {
   assert(count >= 1 && count <= 3, "");
   uint32_t zm = 0;
   OFF pos = start_pos;
@@ -210,7 +210,7 @@ void ZSWriter<ARR,OFF,SET>::digest_multiple_uints(OFF start_pos, int count) {
 }
 
 template<typename ARR, typename OFF, typename SET>
-void ZSWriter<ARR,OFF,SET>::digest_uint_mask(uint32_t more_zm, int more_zm_len, OFF start_pos) {
+void ZeroSuppressingU5::ZSWriter<ARR,OFF,SET>::digest_uint_mask(uint32_t more_zm, int more_zm_len, OFF start_pos) {
   if (is_passthrough()) {
     return;  // no more compression, but it's OK to keep accumulating
   }
@@ -252,7 +252,7 @@ void ZSWriter<ARR,OFF,SET>::digest_uint_mask(uint32_t more_zm, int more_zm_len, 
 }
 
 template<typename ARR, typename OFF, typename SET>
-void ZSWriter<ARR,OFF,SET>::expand_current_block(int trim) {
+void ZeroSuppressingU5::ZSWriter<ARR,OFF,SET>::expand_current_block(int trim) {
   // current block (middle area) takes leading items from zero mask area
   assert(trim > 0 && trim <= _zero_mask_length, "");
   assert(have_zero_mask(), "");
@@ -268,7 +268,7 @@ void ZSWriter<ARR,OFF,SET>::expand_current_block(int trim) {
 }
 
 template<typename ARR, typename OFF, typename SET>
-void ZSWriter<ARR,OFF,SET>::drain_zero_mask(int target_zero_mask_length) {
+void ZeroSuppressingU5::ZSWriter<ARR,OFF,SET>::drain_zero_mask(int target_zero_mask_length) {
   // Drain the zero mask area until it is at most the target size.
   const int zml = _zero_mask_length;
   if (zml <= target_zero_mask_length)  return;
@@ -316,7 +316,7 @@ void ZSWriter<ARR,OFF,SET>::drain_zero_mask(int target_zero_mask_length) {
 }
 
 template<typename ARR, typename OFF, typename SET>
-void ZSWriter<ARR,OFF,SET>::do_compression(uint32_t best_zm) {
+void ZeroSuppressingU5::ZSWriter<ARR,OFF,SET>::do_compression(uint32_t best_zm) {
   // Act on the chosen zero mask.
   assert(best_zm != 0, "");  // must have something to compress
   assert((best_zm & _zero_mask) == best_zm, "subset mask");
@@ -428,7 +428,7 @@ void ZSWriter<ARR,OFF,SET>::do_compression(uint32_t best_zm) {
 }
 
 template<typename ARR, typename OFF, typename SET>
-void ZSWriter<ARR,OFF,SET>::emit_block_command(bool use_indefinite_length) {
+void ZeroSuppressingU5::ZSWriter<ARR,OFF,SET>::emit_block_command(bool use_indefinite_length) {
   assert(!have_zero_mask(), "");
   assert(have_current_block(), "");
   assert(sanity_checks(), "");
@@ -462,7 +462,7 @@ void ZSWriter<ARR,OFF,SET>::emit_block_command(bool use_indefinite_length) {
 }
 
 template<typename ARR, typename OFF, typename SET>
-void ZSWriter<ARR,OFF,SET>::emit_zero_mask_command(uint32_t best_zm) {
+void ZeroSuppressingU5::ZSWriter<ARR,OFF,SET>::emit_zero_mask_command(uint32_t best_zm) {
   assert(is_clean(), "");
   assert(sanity_checks(), "");
   // Emit the zero mask command, including its buffered payload data.
@@ -471,7 +471,7 @@ void ZSWriter<ARR,OFF,SET>::emit_zero_mask_command(uint32_t best_zm) {
 }
 
 template<typename ARR, typename OFF, typename SET>
-void ZSWriter<ARR,OFF,SET>::commit(bool require_clean,
+void ZeroSuppressingU5::ZSWriter<ARR,OFF,SET>::commit(bool require_clean,
                                    bool require_passthrough) {
   assert(!require_clean || !require_passthrough, "");  // not both
   if (is_passthrough()) {   // already passing through uncompressed
@@ -498,7 +498,7 @@ void ZSWriter<ARR,OFF,SET>::commit(bool require_clean,
 }
 
 template<typename ARR, typename OFF, typename GET>
-void ZSReader<ARR,OFF,GET>::print_on(outputStream* st) {
+void ZeroSuppressingU5::ZSReader<ARR,OFF,GET>::print_on(outputStream* st) {
   UNSIGNED5::Reader<ARR,OFF,GET> r(_r.array(), _r.limit());
   OFF pos = _r.position();
   st->print("CR");
@@ -568,7 +568,7 @@ void ZSReader<ARR,OFF,GET>::print_on(outputStream* st) {
 }
 
 template<typename ARR, typename OFF, typename SET>
-void ZSWriter<ARR,OFF,SET>::print_on(outputStream* st) {
+void ZeroSuppressingU5::ZSWriter<ARR,OFF,SET>::print_on(outputStream* st) {
   ZSReader<ARR,OFF,SET> r(_w.array(), _w.position());
   if (is_passthrough())  r.set_passthrough();
   st->print("CW[");
@@ -880,10 +880,4 @@ print_on(outputStream* st, int count,
 
 PRAGMA_DIAG_POP
 
-// Explicit instantiation for supported types.
-template void UNSIGNED5::Reader<char*,int>::
-print_on(outputStream* st, int count, const char* left, const char* right);
-template void UNSIGNED5::Reader<u1*,int>::
-print_on(outputStream* st, int count, const char* left, const char* right);
-template void UNSIGNED5::Reader<address,size_t>::
-print_on(outputStream* st, int count, const char* left, const char* right);
+// ## error: duplicate explicit instantiation

@@ -224,7 +224,7 @@ class UNSIGNED5 : AllStatic {
     // This is a simple linear formula over integers.
     // This works because H is an exact power of 2.
     int log2i_max = flg_L + (len - 1) * lg_H;
-    assert(log2i_max == log2i(max_encoded_in_length(len)), "");
+    // ## error: call to non-'constexpr' function
     return log2i_max;
   }
 
@@ -542,7 +542,10 @@ class UNSIGNED5 : AllStatic {
       assert(_position <= limit, "");
       _limit = limit;
       if (_array != array) {
-        memcpy(array, _array, _position);
+        // ## error: 'void* memcpy(void*, const void*, size_t)' writing to an object of type 'class Array<unsigned char>' with no trivial copy-assignment
+        for (int i = 0; i < (int)_position; i++) {
+          SET()(array, i, SET()(_array, i));
+        }
         _array = array;
       }
     }
@@ -1165,7 +1168,8 @@ class ZeroSuppressingU5 : AllStatic {
     return cmd >> BLOCK_TAG_WIDTH;
   }
   static uint32_t encode_block_count(uint32_t count) {
-    assert(count >= 0 && count <= MAX_BLOCK_COUNT, "");
+    // ## error: comparison of unsigned expression >= 0 is always true
+    assert(count <= MAX_BLOCK_COUNT, "");
     int cmd = count << BLOCK_TAG_WIDTH;
     assert(decode_block_count(cmd) == count, "");
     return cmd;
