@@ -1872,6 +1872,10 @@ const int ObjectAlignmentInBytes = 8;
              "Use the FP register for holding the frame pointer "           \
              "and not as a general purpose register.")                      \
                                                                             \
+  product(int, DisableRegisters, 0,                                         \
+          "Disable a number of AARCH registers.")                           \
+          range(0, 21)                                                      \
+                                                                            \
   product(size_t, AsyncLogBufferSize, 2*M,                                  \
           "Memory budget (in bytes) for the buffer of Asynchronous "        \
           "Logging (-Xlog:async).")                                         \

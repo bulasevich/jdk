@@ -1233,14 +1233,22 @@ source %{
 
     _PTR_REG_mask = _ALL_REG_mask;
 
+    RegMask NON_ALLOCATABLE_REG_mask = _NON_ALLOCATABLE_REG_mask;
+    RegMask NON_ALLOCATABLE_REG32_mask = _NON_ALLOCATABLE_REG32_mask;
+    if (UseX30) {
+      NON_ALLOCATABLE_REG_mask.Remove(OptoReg::as_OptoReg(r30->as_VMReg()));
+      NON_ALLOCATABLE_REG_mask.Remove(OptoReg::as_OptoReg(r30->as_VMReg()->next()));
+      NON_ALLOCATABLE_REG32_mask.Remove(OptoReg::as_OptoReg(r30->as_VMReg()));
+    }
+
     _NO_SPECIAL_REG32_mask = _ALL_REG32_mask;
-    _NO_SPECIAL_REG32_mask.SUBTRACT(_NON_ALLOCATABLE_REG32_mask);
+    _NO_SPECIAL_REG32_mask.SUBTRACT(NON_ALLOCATABLE_REG32_mask);
 
     _NO_SPECIAL_REG_mask = _ALL_REG_mask;
-    _NO_SPECIAL_REG_mask.SUBTRACT(_NON_ALLOCATABLE_REG_mask);
+    _NO_SPECIAL_REG_mask.SUBTRACT(NON_ALLOCATABLE_REG_mask);
 
     _NO_SPECIAL_PTR_REG_mask = _ALL_REG_mask;
-    _NO_SPECIAL_PTR_REG_mask.SUBTRACT(_NON_ALLOCATABLE_REG_mask);
+    _NO_SPECIAL_PTR_REG_mask.SUBTRACT(NON_ALLOCATABLE_REG_mask);
 
     // r27 is not allocatable when compressed oops is on and heapbase is not
     // zero, compressed klass pointers doesn't use r27 after JDK-8234794
@@ -1256,6 +1264,32 @@ source %{
       _NO_SPECIAL_REG_mask.Remove(OptoReg::as_OptoReg(r29->as_VMReg()));
       _NO_SPECIAL_PTR_REG_mask.Remove(OptoReg::as_OptoReg(r29->as_VMReg()));
     }
+
+#define DISABLE_REG(xreg) _NO_SPECIAL_REG32_mask.Remove(OptoReg::as_OptoReg(xreg->as_VMReg())); \
+                       _NO_SPECIAL_REG_mask.Remove(OptoReg::as_OptoReg(xreg->as_VMReg()));   \
+                       _NO_SPECIAL_PTR_REG_mask.Remove(OptoReg::as_OptoReg(xreg->as_VMReg()));
+
+    if (DisableRegisters > 0) { DISABLE_REG(r10); }
+    if (DisableRegisters > 1) { DISABLE_REG(r11); }
+    if (DisableRegisters > 2) { DISABLE_REG(r12); }
+    if (DisableRegisters > 3) { DISABLE_REG(r13); }
+    if (DisableRegisters > 4) { DISABLE_REG(r14); }
+    if (DisableRegisters > 5) { DISABLE_REG(r15); }
+    if (DisableRegisters > 6) { DISABLE_REG(r16); }
+    if (DisableRegisters > 7) { DISABLE_REG(r17); }
+    if (DisableRegisters > 8) { DISABLE_REG(r18_tls); }
+    if (DisableRegisters > 9) { DISABLE_REG(r19); }
+    if (DisableRegisters > 10) { DISABLE_REG(r20); }
+    if (DisableRegisters > 11) { DISABLE_REG(r21); }
+    if (DisableRegisters > 12) { DISABLE_REG(r22); }
+    if (DisableRegisters > 13) { DISABLE_REG(r23); }
+    if (DisableRegisters > 14) { DISABLE_REG(r24); }
+    if (DisableRegisters > 15) { DISABLE_REG(r25); }
+    if (DisableRegisters > 16) { DISABLE_REG(r26); }
+    if (DisableRegisters > 17) { DISABLE_REG(r27); }
+    if (DisableRegisters > 18) { DISABLE_REG(r28); }
+    if (DisableRegisters > 19) { DISABLE_REG(r29); }
+    if (DisableRegisters > 20) { DISABLE_REG(r7); }
 
     _NO_SPECIAL_NO_RFP_PTR_REG_mask = _NO_SPECIAL_PTR_REG_mask;
     _NO_SPECIAL_NO_RFP_PTR_REG_mask.Remove(OptoReg::as_OptoReg(r29->as_VMReg()));
