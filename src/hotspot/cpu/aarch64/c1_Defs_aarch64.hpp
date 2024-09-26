@@ -38,19 +38,24 @@ enum {
 };
 
 // FIXME: There are no callee-saved
+// ^^^^^ let us fix it?
 
 // registers
 enum {
+  extra = 3, // BorisU: If callee-saved registers are not used, why don't we add some cpu_regs to the caller_save regs list?
+             //         result: - 1% improvement on RegisterPressure benchmark in client mode
+             //                 - no visible improvement on Renaissance benchmarks
+
   pd_nof_cpu_regs_frame_map = Register::number_of_registers,       // number of GP registers used during code emission
   pd_nof_fpu_regs_frame_map = FloatRegister::number_of_registers,  // number of FP registers used during code emission
 
-  pd_nof_caller_save_cpu_regs_frame_map = 19 - 2 /* rscratch1 and rscratch2 */ R18_RESERVED_ONLY(- 1),  // number of registers killed by calls
+  pd_nof_caller_save_cpu_regs_frame_map = extra + 19 - 2 /* rscratch1 and rscratch2 */ R18_RESERVED_ONLY(- 1),  // number of registers killed by calls
   pd_nof_caller_save_fpu_regs_frame_map = 32,  // number of registers killed by calls
 
-  pd_first_callee_saved_reg = 19 - 2 /* rscratch1 and rscratch2 */ R18_RESERVED_ONLY(- 1),
+  pd_first_callee_saved_reg = extra + 19 - 2 /* rscratch1 and rscratch2 */ R18_RESERVED_ONLY(- 1),
   pd_last_callee_saved_reg = 26 - 2 /* rscratch1 and rscratch2 */ R18_RESERVED_ONLY(- 1),
 
-  pd_last_allocatable_cpu_reg = 16 R18_RESERVED_ONLY(- 1),
+  pd_last_allocatable_cpu_reg = extra + 16 R18_RESERVED_ONLY(- 1),
 
   pd_nof_cpu_regs_reg_alloc
     = pd_last_allocatable_cpu_reg + 1,  // number of registers that are visible to register allocator
@@ -60,9 +65,9 @@ enum {
   pd_nof_fpu_regs_linearscan = pd_nof_fpu_regs_frame_map, // number of registers visible to linear scan
   pd_nof_xmm_regs_linearscan = 0,  // don't have vector registers
   pd_first_cpu_reg = 0,
-  pd_last_cpu_reg = 16 R18_RESERVED_ONLY(- 1),
+  pd_last_cpu_reg = extra + 16 R18_RESERVED_ONLY(- 1),
   pd_first_byte_reg = 0,
-  pd_last_byte_reg = 16 R18_RESERVED_ONLY(- 1),
+  pd_last_byte_reg = extra + 16 R18_RESERVED_ONLY(- 1),
   pd_first_fpu_reg = pd_nof_cpu_regs_frame_map,
   pd_last_fpu_reg =  pd_first_fpu_reg + 31,
 

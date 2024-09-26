@@ -239,6 +239,10 @@ void FrameMap::initialize() {
   // See comment in register_aarch64.hpp
   _caller_save_cpu_regs[16] = r18_opr;
 #endif
+  // todo: test with !R18_RESERVED
+  _caller_save_cpu_regs[17] = r19_opr; // note. x19 is used in stubs without being in a cpu_regs list. todo: check conflicts
+  _caller_save_cpu_regs[18] = r20_opr;
+  _caller_save_cpu_regs[19] = r21_opr;
 
   for (int i = 0; i < 8; i++) {
     _caller_save_fpu_regs[i] = LIR_OprFact::single_fpu(i);

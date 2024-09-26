@@ -297,7 +297,7 @@ class SlowSignatureHandler
     _from = from;
     _to   = (char *)to;
 
-    _int_args = to - (method->is_static() ? 16 : 17);
+    _int_args = to - (method->is_static() ? 16 : 17); // why 16/17?
     _fp_args =  to - 8;
     _fp_identifiers = to - 9;
     *(int*) _fp_identifiers = 0;
