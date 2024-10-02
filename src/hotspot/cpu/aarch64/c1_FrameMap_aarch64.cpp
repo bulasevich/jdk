@@ -239,6 +239,15 @@ void FrameMap::initialize() {
   // See comment in register_aarch64.hpp
   _caller_save_cpu_regs[16] = r18_opr;
 #endif
+  _caller_save_cpu_regs[17 R18_RESERVED_ONLY(-1)] = r19_opr;
+  _caller_save_cpu_regs[18 R18_RESERVED_ONLY(-1)] = r20_opr;
+  _caller_save_cpu_regs[19 R18_RESERVED_ONLY(-1)] = r21_opr;
+  _caller_save_cpu_regs[20 R18_RESERVED_ONLY(-1)] = r22_opr;
+  _caller_save_cpu_regs[21 R18_RESERVED_ONLY(-1)] = r23_opr;
+  _caller_save_cpu_regs[22 R18_RESERVED_ONLY(-1)] = r24_opr;
+  _caller_save_cpu_regs[23 R18_RESERVED_ONLY(-1)] = r25_opr;
+  _caller_save_cpu_regs[24 R18_RESERVED_ONLY(-1)] = r26_opr;
+  _caller_save_cpu_regs[25 R18_RESERVED_ONLY(-1)] = r27_opr;
 
   for (int i = 0; i < 8; i++) {
     _caller_save_fpu_regs[i] = LIR_OprFact::single_fpu(i);
