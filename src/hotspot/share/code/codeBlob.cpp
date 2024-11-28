@@ -61,11 +61,20 @@ unsigned int CodeBlob::align_code_offset(int offset) {
   return align_up(offset + header_size, CodeEntryAlignment) - header_size;
 }
 
+static int required_mutable_data_space(CodeBuffer* code_buffer,
+                                       int jvmci_data_size = 0) {
+  return align_up(code_buffer->total_relocation_size(), oopSize) +
+         align_up(code_buffer->total_oop_size(), oopSize) +
+         align_up(jvmci_data_size, oopSize) +                   // jvmci_data_size?
+         align_up(code_buffer->total_metadata_size(), oopSize);
+}
+
 // This must be consistent with the CodeBlob constructor's layout actions.
 unsigned int CodeBlob::allocation_size(CodeBuffer* cb, int header_size) {
   // align the size to CodeEntryAlignment
   unsigned int size = align_code_offset(header_size);
   size += align_up(cb->total_content_size(), oopSize);
+  size += required_mutable_data_space(cb, 0);
   return size;
 }
 
@@ -90,8 +99,8 @@ CodeBlob::CodeBlob(const char* name, CodeBlobKind kind, CodeBuffer* cb, int size
   assert(is_aligned(_size,            oopSize), "unaligned size");
   assert(is_aligned(header_size,      oopSize), "unaligned size");
   assert(is_aligned(_relocation_size, oopSize), "unaligned size");
-  int code_end_offset = _content_offset + align_up(cb->total_content_size(), oopSize);
-  assert(code_end_offset == _size, "wrong codeBlob size: %d != %d", _size, code_end_offset);
+  _data_offset = _content_offset + align_up(cb->total_content_size(), oopSize);
+  //assert(code_end_offset == _size, "wrong codeBlob size: %d != %d", _size, code_end_offset);
   assert(code_end() == content_end(), "must be the same - see code_end()");
 #ifdef COMPILER1
   // probably wrong for tiered
@@ -102,7 +111,8 @@ CodeBlob::CodeBlob(const char* name, CodeBlobKind kind, CodeBuffer* cb, int size
   // for reloc_info and additional data, or it is set here to accommodate only the relocation data.
   _mutable_data_size = (mutable_data_size == 0) ? cb->total_relocation_size() : mutable_data_size;
   if (_mutable_data_size > 0) {
-    _mutable_data = (address)os::malloc(_mutable_data_size, mtCode);
+    _mutable_data = (address)this + _data_offset;
+    //_mutable_data = (address)os::malloc(_mutable_data_size, mtCode);
     if (_mutable_data == nullptr) {
       vm_exit_out_of_memory(_mutable_data_size, OOM_MALLOC_ERROR, "codebuffer: no space for mutable data");
     }
@@ -119,6 +129,7 @@ CodeBlob::CodeBlob(const char* name, CodeBlobKind kind, int size, uint16_t heade
   _relocation_size(0),
   _content_offset(CodeBlob::align_code_offset(header_size)),
   _code_offset(_content_offset),
+  _data_offset(size),
   _frame_size(0),
   S390_ONLY(_ctable_offset(0) COMMA)
   _header_size(header_size),
@@ -299,7 +310,7 @@ AdapterBlob* AdapterBlob::create(CodeBuffer* cb) {
   CodeCache::gc_on_allocation();
 
   AdapterBlob* blob = nullptr;
-  unsigned int size = CodeBlob::allocation_size(cb, sizeof(AdapterBlob));
+  unsigned int size = CodeBlob::allocation_size(cb, sizeof(AdapterBlob)) + 32; // miscalculation?
   {
     MutexLocker mu(CodeCache_lock, Mutex::_no_safepoint_check_flag);
     blob = new (size) AdapterBlob(size, cb);

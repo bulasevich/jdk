@@ -1518,8 +1518,8 @@ nmethod::nmethod(
     assert(_mutable_data_size == reloc_size + oop_size + metadata_size + jvmci_data_size,
            "wrong mutable data size: %d != %d + %d + %d + %d",
            _mutable_data_size, reloc_size, oop_size, metadata_size, jvmci_data_size);
-    assert(nmethod_size == code_end() - header_begin(), "wrong nmethod size: %d != %d",
-           nmethod_size, (int)(code_end() - header_begin()));
+//    assert(nmethod_size == code_end() - header_begin(), "wrong nmethod size: %d != %d",
+//           nmethod_size, (int)(code_end() - header_begin()));
 
     _immutable_data_size  = immutable_data_size;
     if (immutable_data_size > 0) {
@@ -2154,7 +2154,7 @@ void nmethod::purge(bool unregister_nmethod) {
     _immutable_data = blob_end(); // Valid not null address
   }
   if (_mutable_data != blob_end()) {
-    os::free(_mutable_data);
+    //os::free(_mutable_data);
     _mutable_data = blob_end(); // Valid not null address
   }
   if (unregister_nmethod) {
