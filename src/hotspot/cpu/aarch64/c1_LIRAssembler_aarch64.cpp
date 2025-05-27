@@ -1230,11 +1230,11 @@ void LIR_Assembler::type_profile_helper(Register mdo,
   for (uint i = 0; i < ReceiverTypeData::row_limit(); i++) {
     Label next_test;
     // See if the receiver is receiver[n].
-    __ ldr(rscratch1, slot_at(ReceiverTypeData::receiver_offset(i)));
+SKIP_LDR_CHECK__( __ ldr(rscratch1, slot_at(ReceiverTypeData::receiver_offset(i))); ) // a safe place. form_address checks limits and create a proper Address
     __ cmp(recv, rscratch1);
     __ br(Assembler::NE, next_test);
-    __ addptr(slot_at(ReceiverTypeData::receiver_count_offset(i)),
-              DataLayout::counter_increment);
+SKIP_LDR_CHECK__( __ addptr(slot_at(ReceiverTypeData::receiver_count_offset(i)),
+              DataLayout::counter_increment); ) // a safe place. form_address checks limits and create a proper Address
     __ b(*update_done);
     __ bind(next_test);
   }
@@ -1243,11 +1243,11 @@ void LIR_Assembler::type_profile_helper(Register mdo,
   for (uint i = 0; i < ReceiverTypeData::row_limit(); i++) {
     Label next_test;
     Address recv_addr(slot_at(ReceiverTypeData::receiver_offset(i)));
-    __ ldr(rscratch1, recv_addr);
+SKIP_LDR_CHECK__( __ ldr(rscratch1, recv_addr); ) // a safe place. form_address checks limits and create a proper Address
     __ cbnz(rscratch1, next_test);
-    __ str(recv, recv_addr);
+SKIP_LDR_CHECK__( __ str(recv, recv_addr); ) // a safe place. form_address checks limits and create a proper Address
     __ mov(rscratch1, DataLayout::counter_increment);
-    __ str(rscratch1, slot_at(ReceiverTypeData::receiver_count_offset(i)));
+SKIP_LDR_CHECK__( __ str(rscratch1, slot_at(ReceiverTypeData::receiver_count_offset(i))); ) // a safe place. form_address checks limits and create a proper Address
     __ b(*update_done);
     __ bind(next_test);
   }
@@ -1306,9 +1306,9 @@ void LIR_Assembler::emit_typecheck_helper(LIR_OpTypeCheck *op, Label* success, L
       = __ form_address(rscratch2, mdo,
                         md->byte_offset_of_slot(data, DataLayout::flags_offset()),
                         0);
-    __ ldrb(rscratch1, data_addr);
+SKIP_LDR_CHECK__( __ ldrb(rscratch1, data_addr); ) // a safe place. form_address checks limits and create a proper Address
     __ orr(rscratch1, rscratch1, BitData::null_seen_byte_constant());
-    __ strb(rscratch1, data_addr);
+SKIP_LDR_CHECK__( __ strb(rscratch1, data_addr); ) // a safe place.
     __ b(*obj_is_null);
     __ bind(not_null);
 
@@ -1420,9 +1420,9 @@ void LIR_Assembler::emit_opTypeCheck(LIR_OpTypeCheck* op) {
       Address data_addr
         = __ form_address(rscratch2, mdo,
                           md->byte_offset_of_slot(data, DataLayout::flags_offset()), 0);
-      __ ldrb(rscratch1, data_addr);
+SKIP_LDR_CHECK__( __ ldrb(rscratch1, data_addr); ) // a safe place. form_address checks limits and create a proper Address
       __ orr(rscratch1, rscratch1, BitData::null_seen_byte_constant());
-      __ strb(rscratch1, data_addr);
+SKIP_LDR_CHECK__( __ strb(rscratch1, data_addr); ) // a safe place
       __ b(done);
       __ bind(not_null);
 
@@ -2572,7 +2572,7 @@ void LIR_Assembler::emit_profile_call(LIR_OpProfileCall* op) {
             __ form_address(rscratch2, mdo,
                             md->byte_offset_of_slot(data, VirtualCallData::receiver_offset(i)),
                             LogBytesPerWord);
-          __ str(rscratch1, recv_addr);
+            SKIP_LDR_CHECK__( __ str(rscratch1, recv_addr); ) // a safe place. form_address checks limits and create a proper Address
           Address data_addr(mdo, md->byte_offset_of_slot(data, VirtualCallData::receiver_count_offset(i)));
           __ addptr(data_addr, DataLayout::counter_increment);
           return;

@@ -2761,7 +2761,7 @@ typedef void (MacroAssembler::* mem_vector_insn)(FloatRegister Rt,
       assert_different_registers(rscratch1, reg);
       addr = __ legitimize_address(addr, size_in_memory, rscratch1);
     }
-    (masm->*insn)(reg, addr);
+    SKIP_LDR_CHECK_masm( (masm->*insn)(reg, addr); ) // ## a safe place. address is legitimized
   }
 
   static void loadStore(C2_MacroAssembler* masm, mem_float_insn insn,
@@ -2785,7 +2785,7 @@ typedef void (MacroAssembler::* mem_vector_insn)(FloatRegister Rt,
       assert_different_registers(rscratch1, base);
       Address addr = Address(base, disp);
       addr = __ legitimize_address(addr, size_in_memory, rscratch1);
-      (masm->*insn)(reg, addr);
+SKIP_LDR_CHECK_masm( (masm->*insn)(reg, addr); ) // a safe place. address is legitimized
     } else {
       assert(disp == 0, "unsupported address mode: disp = %d", disp);
       (masm->*insn)(reg, Address(base, as_Register(index), scale));
@@ -2797,7 +2797,10 @@ typedef void (MacroAssembler::* mem_vector_insn)(FloatRegister Rt,
                         int opcode, Register base, int index, int size, int disp)
   {
     if (index == -1) {
-      (masm->*insn)(reg, T, Address(base, disp));
+      Address addr = Address(base, disp);
+      int size_in_memory = 1;
+      addr = __ legitimize_address(addr, size_in_memory, rscratch1);
+      SKIP_LDR_CHECK_masm( (masm->*insn)(reg, T, addr); ) // a safe place. an address is legitimized
     } else {
       assert(disp == 0, "unsupported address mode");
       (masm->*insn)(reg, T, Address(base, as_Register(index), Address::lsl(size)));

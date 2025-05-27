@@ -5003,9 +5003,9 @@ void MacroAssembler::addptr(const Address &dst, int32_t src) {
     adr = Address(rscratch2);
     break;
   }
-  ldr(rscratch1, adr);
+SKIP_LDR_CHECK_this( ldr(rscratch1, adr); ) // a safe place. form_address checks limits and create a proper Address
   add(rscratch1, rscratch1, src);
-  str(rscratch1, adr);
+SKIP_LDR_CHECK_this( str(rscratch1, adr); ) // a safe place. form_address checks limits and create a proper Address
 }
 
 void MacroAssembler::cmpptr(Register src1, Address src2) {

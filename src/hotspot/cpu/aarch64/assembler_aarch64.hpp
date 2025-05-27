@@ -537,7 +537,7 @@ class Address {
     return _literal._rspec;
   }
 
-  void encode(Instruction_aarch64 *i) const {
+  void encode(Instruction_aarch64 *i, bool skip_ldr_check = false) const {
     i->f(0b111, 29, 27);
     i->srf(base(), 5);
 
@@ -552,6 +552,11 @@ class Address {
         }
         assert(offset_ok_for_immed(offset(), size),
                "must be, was: " INT64_FORMAT ", %d", offset(), size);
+        if (ShortenLDROffset && !skip_ldr_check) {
+          // an experiment: check a stricter offset limits.
+          // fail the assert if the doubled offset does not fit into LDR/STR instruction limits
+          assert(offset_ok_for_immed(offset() * 2, size), "must be, was: " INT64_FORMAT ", %d", offset(), size);
+        }
         unsigned mask = (1 << size) - 1;
         if (offset() < 0 || offset() & mask) {
           i->f(0b00, 25, 24);
@@ -721,6 +726,8 @@ typedef enum {
 class Assembler : public AbstractAssembler {
 
 public:
+// temporary dev flag. set it to true when we a going to skip the LDR offset check
+bool skip_ldr_check = false;
 
 #ifndef PRODUCT
   static const uintptr_t asm_bp;
@@ -1556,7 +1563,7 @@ public:
 
     f(size, 31, 30);
     f(op, 23, 22); // str
-    adr.encode(&current_insn);
+    adr.encode(&current_insn, skip_ldr_check);
   }
 
 #define INSN(NAME, size, op)                            \

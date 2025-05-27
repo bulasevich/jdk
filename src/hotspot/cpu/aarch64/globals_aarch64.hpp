@@ -78,11 +78,19 @@ define_pd_global(intx, InitArrayShortSize, BytesPerLong);
 define_pd_global(intx, InlineSmallCode,          1000);
 #endif
 
+// a dev macros to disable LDR offset check for the given instruction
+#define SKIP_LDR_CHECK_masm(CODE)  { masm->skip_ldr_check  = true; CODE; masm->skip_ldr_check  = false; }
+#define SKIP_LDR_CHECK__masm(CODE) { _masm->skip_ldr_check = true; CODE; _masm->skip_ldr_check = false; }
+#define SKIP_LDR_CHECK__(CODE)     { __ skip_ldr_check     = true; CODE; __ skip_ldr_check     = false; }
+#define SKIP_LDR_CHECK_this(CODE)  { this->skip_ldr_check  = true; CODE; this->skip_ldr_check  = false; }
+
 #define ARCH_FLAGS(develop,                                             \
                    product,                                             \
                    range,                                               \
                    constraint)                                          \
                                                                         \
+  product(bool, ShortenLDROffset, true,                                 \
+         "dev option to find LDR/STR offsets near the margin")          \
   product(bool, NearCpool, true,                                        \
          "constant pool is close to instructions")                      \
   product(bool, UseCRC32, false,                                        \

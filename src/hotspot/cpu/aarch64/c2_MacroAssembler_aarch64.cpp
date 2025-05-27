@@ -224,7 +224,8 @@ void C2_MacroAssembler::fast_lock(Register objectReg, Register boxReg, Register 
   br(Assembler::NE, cont); // Check for recursive locking
 
   // Recursive lock case
-  increment(Address(disp_hdr, in_bytes(ObjectMonitor::recursions_offset()) - markWord::monitor_value), 1);
+SKIP_LDR_CHECK_this( increment(Address(disp_hdr, in_bytes(ObjectMonitor::recursions_offset()) - markWord::monitor_value), 1); ) // a safe place. we'll get assert if ObjectMonitor layout changes. TestSynchronizeWithEmptyBlock: offset/size=134/3
+
   // flag == EQ still from the cmp above, checking if this is a reentrant lock
 
   bind(cont);
@@ -477,7 +478,8 @@ void C2_MacroAssembler::fast_lock_lightweight(Register obj, Register box, Regist
     br(Assembler::NE, slow_path);
 
     // Recursive.
-    increment(recursions_address, 1);
+    SKIP_LDR_CHECK_this( increment(recursions_address, 1); ) // a safe place. we'll get assert if ObjectMonitor layout changes
+                                                             // recursions_address = 136 - 2 < max = 256
 
     bind(monitor_locked);
     if (UseObjectMonitorTable) {

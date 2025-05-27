@@ -763,7 +763,15 @@ void LIR_Assembler::move_op(LIR_Opr src, LIR_Opr dest, BasicType type, LIR_Patch
       assert(patch_code == lir_patch_none && info == nullptr, "no patching and info allowed here");
       reg2stack(src, dest, type);
     } else if (dest->is_address()) {
-      reg2mem(src, dest, type, patch_code, info, wide);
+SKIP_LDR_CHECK__masm( reg2mem(src, dest, type, patch_code, info, wide); )  // a safe place. address is legitimized in reg2mem -> asAddress
+// #  assert(offset_ok_for_immed(offset() * 2, size)) failed: must be, was: 16984, 3
+// V  [libjvm.so+0x468ff0]  Address::encode(Instruction_aarch64*) const+0x4d0  (assembler_aarch64.hpp:555)
+// V  [libjvm.so+0x469f14]  Assembler::ld_st2(Register, Address const&, int, int, int)+0x1b4  (assembler_aarch64.hpp:1560)
+// V  [libjvm.so+0x73813c]  LIR_Assembler::reg2mem(LIR_Opr, LIR_Opr, BasicType, LIR_PatchCode, CodeEmitInfo*, bool)+0x19c  (c1_LIRAssembler_aarch64.cpp:811)
+// V  [libjvm.so+0x731c00]  LIR_Assembler::move_op(LIR_Opr, LIR_Opr, BasicType, LIR_PatchCode, CodeEmitInfo*, bool)+0x400  (c1_LIRAssembler.cpp:766)
+// V  [libjvm.so+0x733330]  LIR_Assembler::emit_lir_list(LIR_List*)+0xe8  (c1_LIRAssembler.cpp:302)
+// V  [libjvm.so+0x733c18]  LIR_Assembler::emit_code(BlockList*)+0x278  (c1_LIRAssembler.cpp:267)
+// V  [libjvm.so+0x6dc038]  Compilation::emit_code_body()+0x14c  (c1_Compilation.cpp:355)
     } else {
       ShouldNotReachHere();
     }
@@ -792,7 +800,15 @@ void LIR_Assembler::move_op(LIR_Opr src, LIR_Opr dest, BasicType type, LIR_Patch
     }
 
   } else if (src->is_address()) {
-    mem2reg(src, dest, type, patch_code, info, wide);
+    SKIP_LDR_CHECK__masm( mem2reg(src, dest, type, patch_code, info, wide); ) // a safe place. address is legitimized in mem2reg -> asAddress
+    // #  assert(offset_ok_for_immed(offset() * 2, size)) failed: must be, was: 16984, 3
+    // V  [libjvm.so+0x468ff0]  Address::encode(Instruction_aarch64*) const+0x4d0  (assembler_aarch64.hpp:555)
+    // V  [libjvm.so+0x469f14]  Assembler::ld_st2(Register, Address const&, int, int, int)+0x1b4  (assembler_aarch64.hpp:1560)
+    // V  [libjvm.so+0x739abc]  LIR_Assembler::mem2reg(LIR_Opr, LIR_Opr, BasicType, LIR_PatchCode, CodeEmitInfo*, bool)+0x230  (c1_LIRAssembler_aarch64.cpp:964)
+    // V  [libjvm.so+0x731aa4]  LIR_Assembler::move_op(LIR_Opr, LIR_Opr, BasicType, LIR_PatchCode, CodeEmitInfo*, bool)+0x2a4  (c1_LIRAssembler.cpp:795)
+    // V  [libjvm.so+0x733310]  LIR_Assembler::emit_lir_list(LIR_List*)+0xe8  (c1_LIRAssembler.cpp:302)
+    // V  [libjvm.so+0x733bf8]  LIR_Assembler::emit_code(BlockList*)+0x278  (c1_LIRAssembler.cpp:267)
+    // V  [libjvm.so+0x6dc038]  Compilation::emit_code_body()+0x14c  (c1_Compilation.cpp:355)
   } else {
     ShouldNotReachHere();
   }

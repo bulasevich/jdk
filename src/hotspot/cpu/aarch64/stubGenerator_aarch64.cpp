@@ -258,7 +258,7 @@ class StubGenerator: public StubCodeGenerator {
     __ stpd(v15, v14,  d15_save);
 
     __ get_fpcr(rscratch1);
-    __ str(rscratch1, fpcr_save);
+SKIP_LDR_CHECK__( __ str(rscratch1, fpcr_save); ) // fpcr_save = -28 * wordSize = -224 // a safe place. we'll get assert if call stub stack layout is changed
     // Set FPCR to the state we need. We do want Round to Nearest. We
     // don't want non-IEEE rounding modes or floating-point traps.
     __ bfi(rscratch1, zr, 22, 4); // Clear DN, FZ, and Rmode
@@ -379,7 +379,7 @@ class StubGenerator: public StubCodeGenerator {
     __ ldp(r20, r19,   r20_save);
 
     // restore fpcr
-    __ ldr(rscratch1,  fpcr_save);
+    SKIP_LDR_CHECK__(  __ ldr(rscratch1,  fpcr_save); ) // a safe place. we'll get assert if call stub stack layout is changed
     __ set_fpcr(rscratch1);
 
     __ ldp(c_rarg0, c_rarg1,  call_wrapper);
@@ -902,7 +902,7 @@ class StubGenerator: public StubCodeGenerator {
     __ bind(again);
 
     if (PrefetchCopyIntervalInBytes > 0)
-      __ prfm(use_stride ? Address(s, stride) : Address(s, prefetch), PLDL1KEEP);
+      SKIP_LDR_CHECK__( __ prfm(use_stride ? Address(s, stride) : Address(s, prefetch), PLDL1KEEP); ) // a safe place. 256 bytes limit is checked above
 
     if (UseSIMDForMemoryOps) {
       bs.copy_store_at_32(Address(d, 4 * unit), v0, v1);
@@ -1034,7 +1034,7 @@ class StubGenerator: public StubCodeGenerator {
       __ bind(again);
 
       if (PrefetchCopyIntervalInBytes > 0)
-        __ prfm(use_stride ? Address(s, stride) : Address(s, prefetch), PLDL1KEEP);
+        SKIP_LDR_CHECK__( __ prfm(use_stride ? Address(s, stride) : Address(s, prefetch), PLDL1KEEP); ) // prefetch = -192. a safe place. 256 bytes limit is checked above
 
       if (direction == copy_forwards) {
        // allowing for the offset of -8 the store instructions place
