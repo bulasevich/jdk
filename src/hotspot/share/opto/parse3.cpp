@@ -398,12 +398,17 @@ void Parse::init_array2d(Node* multi_array,
   exit_region->init_req(1, skip_ctrl);
   exit_region->init_req(2, IfFalse(iff));
   record_for_igvn(exit_region);
+  _gvn.set_type(exit_region, Type::CONTROL);
 
   // Seed exits from header phis' preheader inputs (in(1))
   PhiNode* exit_oops = PhiNode::make(exit_region, mem_phi->in(1),     Type::MEMORY, TypeAryPtr::OOPS);
   exit_oops->set_req(2, st);
   PhiNode* exit_raw  = PhiNode::make(exit_region, mem_phi_raw->in(1), Type::MEMORY, TypeRawPtr::BOTTOM);
   exit_raw->set_req(2, memory(TypeRawPtr::BOTTOM));
+  record_for_igvn(exit_oops);
+  record_for_igvn(exit_raw);
+  _gvn.set_type(exit_oops, Type::MEMORY);
+  _gvn.set_type(exit_raw,  Type::MEMORY);
 
   set_control(exit_region);
   set_memory(exit_oops, TypeAryPtr::OOPS);
