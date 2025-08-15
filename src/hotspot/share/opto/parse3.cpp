@@ -359,12 +359,15 @@ void Parse::init_array2d(Node* multi_array,
   _gvn.set_type(index, TypeInt::INT);
   record_for_igvn(index);
 
-  PhiNode* mem_phi = PhiNode::make(head, memory(TypeAryPtr::BYTES),
-                                   Type::MEMORY, TypeAryPtr::BYTES);
+  // OOPS and RAW loop memory φ
+  PhiNode* mem_phi     = PhiNode::make(head, memory(TypeAryPtr::OOPS),   Type::MEMORY, TypeAryPtr::OOPS);
   record_for_igvn(mem_phi);
+  PhiNode* mem_phi_raw = PhiNode::make(head, memory(TypeRawPtr::BOTTOM), Type::MEMORY, TypeRawPtr::BOTTOM);
+  record_for_igvn(mem_phi_raw);
 
   set_control(head);
-  set_memory(mem_phi, TypeAryPtr::OOPS);
+  set_memory(mem_phi,     TypeAryPtr::OOPS);
+  set_memory(mem_phi_raw, TypeRawPtr::BOTTOM);
 
   // The loop body: array allocation + store
   ciArrayKlass* array_klass_1 =
@@ -377,7 +380,7 @@ void Parse::init_array2d(Node* multi_array,
   Node* st = store_to_memory(control(),
                              array_element_address(multi_array, index, T_OBJECT),
                              array,
-                             T_OBJECT, TypeAryPtr::OOPS, MemNode::unordered, false, false, true);
+                             T_OBJECT, MemNode::unordered, TypeAryPtr::OOPS, false, false, true);
 
   // iff = if (index++ < length1)
   Node* new_i = _gvn.transform(new AddINode(index, _gvn.intcon(1)));
@@ -387,15 +390,24 @@ void Parse::init_array2d(Node* multi_array,
 
   head->init_req(2, IfTrue(iff)); // Back-edge: IfTrue -> go back to head
   index->init_req(2, new_i);
-  mem_phi->init_req(2, st);
+  mem_phi->set_req(2, st);
+  mem_phi_raw->set_req(2, memory(TypeRawPtr::BOTTOM));
 
-  // Exit from the loop
-  set_control(IfFalse(iff));
-  set_memory(st, TypeAryPtr::OOPS);
-
-  RegionNode* exit_region = new RegionNode(2);
+  // Exit from the loop: merge skip path and loop exit with both slices
+  RegionNode* exit_region = new RegionNode(3);
   exit_region->init_req(1, skip_ctrl);
+  exit_region->init_req(2, IfFalse(iff));
   record_for_igvn(exit_region);
+
+  // Seed exits from header phis' preheader inputs (in(1))
+  PhiNode* exit_oops = PhiNode::make(exit_region, mem_phi->in(1),     Type::MEMORY, TypeAryPtr::OOPS);
+  exit_oops->set_req(2, st);
+  PhiNode* exit_raw  = PhiNode::make(exit_region, mem_phi_raw->in(1), Type::MEMORY, TypeRawPtr::BOTTOM);
+  exit_raw->set_req(2, memory(TypeRawPtr::BOTTOM));
+
+  set_control(exit_region);
+  set_memory(exit_oops, TypeAryPtr::OOPS);
+  set_memory(exit_raw,  TypeRawPtr::BOTTOM);
 }
 
 void Parse::do_multianewarray() {
