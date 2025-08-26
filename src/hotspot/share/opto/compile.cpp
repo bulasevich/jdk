@@ -595,7 +595,31 @@ void Compile::print_ideal_ir(const char* phase_name) {
   if (_output == nullptr) {
     ss.print_cr("AFTER: %s", phase_name);
     // Print out all nodes in ascending order of index.
-    root()->dump_bfs(MaxNodeLimit, nullptr, "+S$", &ss);
+    // root()->dump_bfs(MaxNodeLimit, nullptr, "+S$", &ss);
+
+    // Dump ALL nodes reachable from root by walking both inputs and outputs.
+    // This avoids the control-only BFS that can print just Root at post-parse.
+    Unique_Node_List work;
+    work.push(root());
+    for (uint i = 0; i < work.size(); i++) {
+      Node* n = work.at(i);
+      if (n == nullptr) continue;
+      n->dump();
+      // Follow inputs
+      for (uint j = 0; j < n->req(); j++) {
+        Node* in = n->in(j);
+        if (in != nullptr) work.push(in);
+      }
+      for (uint j = n->req(); j < n->len(); j++) {
+        Node* in = n->in(j);
+        if (in != nullptr) work.push(in);
+      }
+      // Follow outputs
+      for (DUIterator_Fast jmax, j = n->fast_outs(jmax); j < jmax; j++) {
+        Node* m = n->fast_out(j);
+        if (m != nullptr) work.push(m);
+      }
+    }
   } else {
     // Dump the node blockwise if we have a scheduling
     _output->print_scheduling(&ss);
@@ -808,6 +832,10 @@ Compile::Compile(ciEnv* ci_env, ciMethod* target, int osr_bci,
       record_method_not_compilable(ss.as_string() DEBUG_ONLY(COMMA true));
       return;
     }
+
+    // ##
+    if (PrintIdealGraph) print_ideal_ir("post-parse");
+
     GraphKit kit(jvms);
 
     if (!kit.stopped()) {
