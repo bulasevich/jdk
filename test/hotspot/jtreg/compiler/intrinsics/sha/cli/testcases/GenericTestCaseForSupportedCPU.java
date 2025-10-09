@@ -76,7 +76,8 @@ public class GenericTestCaseForSupportedCPU extends
                             DigestOptionsBase.USE_SHA_OPTION, true),
                     CommandLineOptionTest.prepareBooleanFlag(optionName, false));
 
-            if (!optionName.equals(DigestOptionsBase.USE_SHA_OPTION)) {
+            if (!optionName.equals(DigestOptionsBase.USE_SHA_OPTION) &&
+                !isSHA3onAARCH(optionName)) { // +UseSHA3Intrinsic is valid with -UseSHA on AArch64 (GPR impl)
                 // Verify that if -XX:-UseSHA is passed to the JVM, it is not possible
                 // to enable the tested option and a warning is printed.
                 CommandLineOptionTest.verifySameJVMStartup(
@@ -92,6 +93,11 @@ public class GenericTestCaseForSupportedCPU extends
                         CommandLineOptionTest.prepareBooleanFlag(optionName, true));
             }
         }
+    }
+
+    static boolean isSHA3onAARCH(String optionName) {
+        if (!Platform.isAArch64()) return false;
+        return optionName.equals(DigestOptionsBase.USE_SHA3_INTRINSICS_OPTION);
     }
 
     @Override
@@ -119,6 +125,7 @@ public class GenericTestCaseForSupportedCPU extends
 
         if (checkUseSHA) {
             // verify that option is disabled when -UseSHA was passed to JVM.
+            if (!isSHA3onAARCH(optionName)) // +UseSHA3Intrinsic does not contradict to -UseSHA on AARCH
             CommandLineOptionTest.verifyOptionValueForSameVM(optionName, "false",
                     String.format("Option '%s' should have value 'false' when %s"
                             + " flag set to JVM", optionName,
