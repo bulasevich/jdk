@@ -1617,6 +1617,11 @@ bool Parse::path_is_suitable_for_uncommon_trap(float prob) const {
     return false;
   }
   return seems_never_taken(prob) &&
+         // After the threshold, GraphKit::uncommon_trap switches Action_reinterpret to Action_none.
+         // In an unlucky case (if the branch was never executed before but has now become frequent),
+         // this can cause a deoptimization storm. Return false to let the parser skip
+         // the profile-based optimistic IF optimization.
+         !C->too_many_recompiles(method(), bci(), Deoptimization::Reason_unstable_if) &&
          !C->too_many_traps(method(), bci(), Deoptimization::Reason_unstable_if);
 }
 
