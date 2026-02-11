@@ -1160,7 +1160,7 @@ bool LibraryCallKit::inline_countPositives() {
 bool LibraryCallKit::inline_preconditions_checkIndex(BasicType bt) {
   Node* index = argument(0);
   Node* length = bt == T_INT ? argument(1) : argument(2);
-  if (too_many_traps(Deoptimization::Reason_intrinsic) || too_many_traps(Deoptimization::Reason_range_check)) {
+  if (too_many_traps_or_recompiles(Deoptimization::Reason_intrinsic) || too_many_traps_or_recompiles(Deoptimization::Reason_range_check)) {
     return false;
   }
 
@@ -1380,7 +1380,7 @@ Node* LibraryCallKit::make_indexOf_node(Node* src_start, Node* src_count, Node* 
 
 //-----------------------------inline_string_indexOfChar-----------------------
 bool LibraryCallKit::inline_string_indexOfChar(StrIntrinsicNode::ArgEnc ae) {
-  if (too_many_traps(Deoptimization::Reason_intrinsic)) {
+  if (too_many_traps_or_recompiles(Deoptimization::Reason_intrinsic)) {
     return false;
   }
   if (!Matcher::match_rule_supported(Op_StrIndexOfChar)) {
@@ -1542,7 +1542,7 @@ bool LibraryCallKit::inline_string_copy(bool compress) {
 //------------------------inline_string_toBytesU--------------------------
 // public static byte[] StringUTF16.toBytes(char[] value, int off, int len)
 bool LibraryCallKit::inline_string_toBytesU() {
-  if (too_many_traps(Deoptimization::Reason_intrinsic)) {
+  if (too_many_traps_or_recompiles(Deoptimization::Reason_intrinsic)) {
     return false;
   }
   // Get the arguments.
@@ -4208,7 +4208,7 @@ bool LibraryCallKit::inline_Class_cast() {
   }
 
   // Bailout intrinsic and do normal inlining if exception path is frequent.
-  if (too_many_traps(Deoptimization::Reason_intrinsic)) {
+  if (too_many_traps_or_recompiles(Deoptimization::Reason_intrinsic)) {
     return false;
   }
 
@@ -4495,7 +4495,7 @@ bool LibraryCallKit::inline_unsafe_newArray(bool uninitialized) {
 //----------------------inline_native_getLength--------------------------
 // public static native int java.lang.reflect.Array.getLength(Object array);
 bool LibraryCallKit::inline_native_getLength() {
-  if (too_many_traps(Deoptimization::Reason_intrinsic))  return false;
+  if (too_many_traps_or_recompiles(Deoptimization::Reason_intrinsic))  return false;
 
   Node* array = null_check(argument(0));
   // If array is dead, only null-path is taken.
@@ -4527,7 +4527,7 @@ bool LibraryCallKit::inline_native_getLength() {
 // public static <T,U> T[] java.util.Arrays.copyOf(     U[] original, int newLength,         Class<? extends T[]> newType);
 // public static <T,U> T[] java.util.Arrays.copyOfRange(U[] original, int from,      int to, Class<? extends T[]> newType);
 bool LibraryCallKit::inline_array_copyOf(bool is_copyOfRange) {
-  if (too_many_traps(Deoptimization::Reason_intrinsic))  return false;
+  if (too_many_traps_or_recompiles(Deoptimization::Reason_intrinsic))  return false;
 
   // Get the arguments.
   Node* original          = argument(0);
@@ -4627,7 +4627,7 @@ bool LibraryCallKit::inline_array_copyOf(bool is_copyOfRange) {
       bool validated = false;
       // Reason_class_check rather than Reason_intrinsic because we
       // want to intrinsify even if this traps.
-      if (!too_many_traps(Deoptimization::Reason_class_check)) {
+      if (!too_many_traps_or_recompiles(Deoptimization::Reason_class_check)) {
         Node* not_subtype_ctrl = gen_subtype_check(original, klass_node);
 
         if (not_subtype_ctrl != top()) {
@@ -8903,8 +8903,7 @@ bool LibraryCallKit::inline_profileBoolean() {
 
     if (false_cnt + true_cnt == 0) {
       // According to profile, never executed.
-      uncommon_trap_exact(Deoptimization::Reason_intrinsic,
-                          Deoptimization::Action_reinterpret);
+      uncommon_trap(Deoptimization::Reason_intrinsic, Deoptimization::Action_reinterpret);
       return true;
     }
 
@@ -8932,8 +8931,7 @@ bool LibraryCallKit::inline_profileBoolean() {
         set_control(slow_path);
         set_i_o(i_o());
 
-        uncommon_trap_exact(Deoptimization::Reason_intrinsic,
-                            Deoptimization::Action_reinterpret);
+        uncommon_trap(Deoptimization::Reason_intrinsic, Deoptimization::Action_reinterpret);
       }
       // The guard for never seen value enables sharpening of the result and
       // returning a constant. It allows to eliminate branches on the same value

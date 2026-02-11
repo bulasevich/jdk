@@ -619,7 +619,7 @@ bool GraphKit::is_builtin_throw_hot(Deoptimization::DeoptReason reason) {
   // If the throw is hot, try to use a more complicated inline mechanism
   // which keeps execution inside the compiled code.
   if (ProfileTraps) {
-    if (too_many_traps(reason)) {
+    if (too_many_traps_or_recompiles(reason)) {
       return true;
     }
     // (If there is no MDO at all, assume it is early in
@@ -1386,7 +1386,7 @@ Node* GraphKit::null_check_common(Node* value, BasicType type,
   // To cause an implicit null check, we set the not-null probability
   // to the maximum (PROB_MAX).  For an explicit check the probability
   // is set to a smaller value.
-  if (null_control != nullptr || too_many_traps(reason)) {
+  if (null_control != nullptr || too_many_traps_or_recompiles(reason)) {
     // probability is less likely
     ok_prob =  PROB_LIKELY_MAG(3);
   } else if (!assert_null &&
@@ -2080,8 +2080,7 @@ void GraphKit::increment_counter(Node* counter_addr) {
 // right debug info.
 Node* GraphKit::uncommon_trap(int trap_request,
                              ciKlass* klass, const char* comment,
-                             bool must_throw,
-                             bool keep_exact_action) {
+                             bool must_throw) {
   if (failing_internal()) {
     stop();
   }
@@ -2112,23 +2111,6 @@ Node* GraphKit::uncommon_trap(int trap_request,
   switch (action) {
   case Deoptimization::Action_maybe_recompile:
   case Deoptimization::Action_reinterpret:
-    // Temporary fix for 6529811 to allow virtual calls to be sure they
-    // get the chance to go from mono->bi->mega
-    if (!keep_exact_action &&
-        Deoptimization::trap_request_index(trap_request) < 0 &&
-        too_many_recompiles(reason)) {
-      // This BCI is causing too many recompilations.
-      if (C->log() != nullptr) {
-        C->log()->elem("observe that='trap_action_change' reason='%s' from='%s' to='none'",
-                Deoptimization::trap_reason_name(reason),
-                Deoptimization::trap_action_name(action));
-      }
-      action = Deoptimization::Action_none;
-      trap_request = Deoptimization::make_trap_request(reason, action);
-    } else {
-      C->set_trap_can_recompile(true);
-    }
-    break;
   case Deoptimization::Action_make_not_entrant:
     C->set_trap_can_recompile(true);
     break;
@@ -2972,7 +2954,7 @@ bool GraphKit::seems_never_null(Node* obj, ciProfileData* data, bool& speculatin
   Deoptimization::DeoptReason reason = Deoptimization::reason_null_check(speculating);
   if (UncommonNullCast               // Cutout for this technique
       && obj != null()               // And not the -Xcomp stupid case?
-      && !too_many_traps(reason)
+      && !too_many_traps_or_recompiles(reason)
       ) {
     if (speculating) {
       return true;
@@ -3078,7 +3060,7 @@ Node* GraphKit::maybe_cast_profiled_receiver(Node* not_null_obj,
                                             &exact_obj);
       { PreserveJVMState pjvms(this);
         set_control(slow_ctl);
-        uncommon_trap_exact(reason, Deoptimization::Action_maybe_recompile);
+        uncommon_trap(reason, Deoptimization::Action_maybe_recompile);
       }
       if (safe_for_replace) {
         replace_in_map(not_null_obj, exact_obj);
@@ -3131,7 +3113,7 @@ Node* GraphKit::maybe_cast_profiled_obj(Node* obj,
       {
         PreserveJVMState pjvms(this);
         set_control(slow_ctl);
-        uncommon_trap_exact(class_reason, Deoptimization::Action_maybe_recompile);
+        uncommon_trap(class_reason, Deoptimization::Action_maybe_recompile);
       }
       replace_in_map(not_null_obj, exact_obj);
       obj = exact_obj;
@@ -3790,7 +3772,7 @@ Node* GraphKit::new_array(Node* klass_node,     // array klass (maybe variable)
   int   layout_is_con = (layout_val == nullptr);
 
   if (!layout_is_con && !StressReflectiveCode &&
-      !too_many_traps(Deoptimization::Reason_class_check)) {
+      !too_many_traps_or_recompiles(Deoptimization::Reason_class_check)) {
     // This is a reflective array creation site.
     // Optimistically assume that it is a subtype of Object[],
     // so that we can fold up all the address arithmetic.
@@ -4037,7 +4019,7 @@ InitializeNode* AllocateNode::initialization() {
 // Add a Parse Predicate with an uncommon trap on the failing/false path. Normal control will continue on the true path.
 void GraphKit::add_parse_predicate(Deoptimization::DeoptReason reason, const int nargs) {
   // Too many traps seen?
-  if (too_many_traps(reason)) {
+  if (too_many_traps_or_recompiles(reason)) {
 #ifdef ASSERT
     if (TraceLoopPredicate) {
       int tc = C->trap_count(reason);

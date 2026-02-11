@@ -1388,12 +1388,7 @@ JVMState* UncommonTrapCallGenerator::generate(JVMState* jvms) {
   assert(nargs <= kit.sp() && kit.sp() <= jvms->stk_size(), "sane sp w/ args pushed");
   if (_reason == Deoptimization::Reason_class_check &&
       _action == Deoptimization::Action_maybe_recompile) {
-    // Temp fix for 6529811
-    // Don't allow uncommon_trap to override our decision to recompile in the event
-    // of a class cast failure for a monomorphic call as it will never let us convert
-    // the call to either bi-morphic or megamorphic and can lead to unc-trap loops
-    bool keep_exact_action = true;
-    kit.uncommon_trap(_reason, _action, nullptr, "monomorphic vcall checkcast", false, keep_exact_action);
+    kit.uncommon_trap(_reason, _action, nullptr, "monomorphic vcall checkcast", false);
   } else {
     kit.uncommon_trap(_reason, _action);
   }

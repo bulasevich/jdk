@@ -4233,7 +4233,7 @@ bool Compile::too_many_recompiles(ciMethod* method,
   }
   // Pick a cutoff point well within PerBytecodeRecompilationCutoff.
   uint bc_cutoff = (uint) PerBytecodeRecompilationCutoff / 8;
-  uint m_cutoff  = (uint) PerMethodRecompilationCutoff / 2 + 1;  // not zero
+  uint m_cutoff  = (uint) PerMethodRecompilationCutoff;
   Deoptimization::DeoptReason per_bc_reason
     = Deoptimization::reason_recorded_per_bytecode_if_any(reason);
   ciMethod* m = Deoptimization::reason_is_speculate(reason) ? this->method() : nullptr;
