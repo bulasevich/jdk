@@ -609,7 +609,7 @@ void GraphKit::builtin_throw(Deoptimization::DeoptReason reason,
   // of in-edges on the call to the uncommon trap.
   uncommon_trap(reason, Deoptimization::Action_maybe_recompile,
                 (ciKlass*) nullptr, (char*) nullptr,
-                true /*must_throw*/, true /*exact_action*/);
+                true /*must_throw*/);
 }
 
 bool GraphKit::is_builtin_throw_hot(Deoptimization::DeoptReason reason) {
@@ -1300,8 +1300,7 @@ Node* GraphKit::null_check_common(Node* value, BasicType type,
 #endif
         uncommon_trap(Deoptimization::Reason_unloaded,
                       Deoptimization::Action_reinterpret,
-                      klass, "!loaded",
-                      false, true /*exact_action*/);
+                      klass, "!loaded");
         return top();
       }
 
@@ -2081,8 +2080,7 @@ void GraphKit::increment_counter(Node* counter_addr) {
 // right debug info.
 Node* GraphKit::uncommon_trap(int trap_request,
                              ciKlass* klass, const char* comment,
-                             bool must_throw,
-                             bool keep_exact_action) {
+                             bool must_throw) {
   if (failing_internal()) {
     stop();
   }
@@ -2113,19 +2111,6 @@ Node* GraphKit::uncommon_trap(int trap_request,
   switch (action) {
   case Deoptimization::Action_maybe_recompile:
   case Deoptimization::Action_reinterpret:
-    // RecompilationCutoff reached: stop recompiling and fall back to the interpreter.
-    if (too_many_recompiles(reason) && !keep_exact_action) {
-      if (C->log() != nullptr) {
-        C->log()->begin_elem("uncommon_trap bci='%d'", bci());
-        C->log()->elem("observe that='trap_action_change' reason='%s' from='%s' to='make_not_compilable'",
-                      Deoptimization::trap_reason_name(reason),
-                      Deoptimization::trap_action_name(action));
-      }
-      action = Deoptimization::Action_make_not_compilable;
-      trap_request = Deoptimization::make_trap_request(reason, action);
-      break;
-    }
-    // fall though
   case Deoptimization::Action_make_not_entrant:
     C->set_trap_can_recompile(true);
     break;
@@ -3001,8 +2986,7 @@ void GraphKit::guard_klass_being_initialized(Node* klass) {
   Node* tst = _gvn.transform(new BoolNode(chk, BoolTest::eq));
 
   { BuildCutout unless(this, tst, PROB_MAX);
-    uncommon_trap(Deoptimization::Reason_initialized, Deoptimization::Action_reinterpret,
-    nullptr, nullptr, false, true /*exact_action*/);
+    uncommon_trap(Deoptimization::Reason_initialized, Deoptimization::Action_reinterpret);
   }
 }
 
@@ -3038,7 +3022,7 @@ void GraphKit::clinit_barrier(ciInstanceKlass* ik, ciMethod* context) {
   } else {
     uncommon_trap(Deoptimization::Reason_uninitialized,
                   Deoptimization::Action_reinterpret,
-                  nullptr, nullptr, false, true /*exact_action*/);
+                  nullptr);
   }
 }
 
@@ -3076,7 +3060,7 @@ Node* GraphKit::maybe_cast_profiled_receiver(Node* not_null_obj,
                                             &exact_obj);
       { PreserveJVMState pjvms(this);
         set_control(slow_ctl);
-        uncommon_trap_exact(reason, Deoptimization::Action_maybe_recompile);
+        uncommon_trap(reason, Deoptimization::Action_maybe_recompile);
       }
       if (safe_for_replace) {
         replace_in_map(not_null_obj, exact_obj);
@@ -3129,7 +3113,7 @@ Node* GraphKit::maybe_cast_profiled_obj(Node* obj,
       {
         PreserveJVMState pjvms(this);
         set_control(slow_ctl);
-        uncommon_trap_exact(class_reason, Deoptimization::Action_maybe_recompile);
+        uncommon_trap(class_reason, Deoptimization::Action_maybe_recompile);
       }
       replace_in_map(not_null_obj, exact_obj);
       obj = exact_obj;

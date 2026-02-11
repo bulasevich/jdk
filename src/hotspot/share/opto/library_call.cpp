@@ -971,8 +971,7 @@ void LibraryCallKit::generate_string_range_check(Node* array,
       PreserveJVMState pjvms(this);
       set_control(_gvn.transform(bailout));
       uncommon_trap(Deoptimization::Reason_intrinsic,
-                    Deoptimization::Action_maybe_recompile,
-                    nullptr, nullptr, false, true /*exact_action*/);
+                    Deoptimization::Action_maybe_recompile);
     }
   }
 }
@@ -8904,8 +8903,7 @@ bool LibraryCallKit::inline_profileBoolean() {
 
     if (false_cnt + true_cnt == 0) {
       // According to profile, never executed.
-      uncommon_trap_exact(Deoptimization::Reason_intrinsic,
-                          Deoptimization::Action_reinterpret);
+      uncommon_trap(Deoptimization::Reason_intrinsic, Deoptimization::Action_reinterpret);
       return true;
     }
 
@@ -8933,8 +8931,7 @@ bool LibraryCallKit::inline_profileBoolean() {
         set_control(slow_path);
         set_i_o(i_o());
 
-        uncommon_trap_exact(Deoptimization::Reason_intrinsic,
-                            Deoptimization::Action_reinterpret);
+        uncommon_trap(Deoptimization::Reason_intrinsic, Deoptimization::Action_reinterpret);
       }
       // The guard for never seen value enables sharpening of the result and
       // returning a constant. It allows to eliminate branches on the same value

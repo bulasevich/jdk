@@ -149,8 +149,7 @@ Node* Parse::array_addressing(BasicType type, int vals, const Type*& elemtype) {
 
     uncommon_trap(Deoptimization::Reason_unloaded,
                   Deoptimization::Action_reinterpret,
-                  klass, "!loaded array",
-                  false, true /*exact_action*/);
+                  klass, "!loaded array");
     return top();
   }
 
@@ -235,8 +234,7 @@ void Parse::jump_if_true_fork(IfNode *iff, int dest_bci_if_true, bool unc) {
       uncommon_trap(Deoptimization::Reason_unstable_if,
                     Deoptimization::Action_reinterpret,
                     nullptr,
-                    "taken always",
-                    true /*exact_action*/);
+                    "taken always");
     } else {
       assert(dest_bci_if_true != never_reached, "inconsistent dest");
       merge_new_path(dest_bci_if_true);
@@ -258,8 +256,7 @@ void Parse::jump_if_false_fork(IfNode *iff, int dest_bci_if_true, bool unc) {
       uncommon_trap(Deoptimization::Reason_unstable_if,
                     Deoptimization::Action_reinterpret,
                     nullptr,
-                    "taken never",
-                    true /*exact_action*/);
+                    "taken never");
     } else {
       assert(dest_bci_if_true != never_reached, "inconsistent dest");
       merge_new_path(dest_bci_if_true);
@@ -278,8 +275,7 @@ void Parse::jump_if_always_fork(int dest_bci, bool unc) {
     uncommon_trap(Deoptimization::Reason_unstable_if,
                   Deoptimization::Action_reinterpret,
                   nullptr,
-                  "taken never",
-                  true /*exact_action*/);
+                  "taken never");
   } else {
     assert(dest_bci != never_reached, "inconsistent dest");
     merge_new_path(dest_bci);
@@ -1391,8 +1387,7 @@ void Parse::do_ifnull(BoolTest::mask btest, Node *c) {
     repush_if_args(); // to gather stats on loop
     uncommon_trap(Deoptimization::Reason_unreached,
                   Deoptimization::Action_reinterpret,
-                  nullptr, "cold",
-                  true /*exact_action*/);
+                  nullptr, "cold");
     if (C->eliminate_boxing()) {
       // Mark the successor blocks as parsed
       branch_block->next_path_num();
@@ -1467,8 +1462,7 @@ void Parse::do_if(BoolTest::mask btest, Node* c) {
     repush_if_args(); // to gather stats on loop
     uncommon_trap(Deoptimization::Reason_unreached,
                   Deoptimization::Action_reinterpret,
-                  nullptr, "cold",
-                  true /*exact_action*/);
+                  nullptr, "cold");
     if (C->eliminate_boxing()) {
       // Mark the successor blocks as parsed
       branch_block->next_path_num();
