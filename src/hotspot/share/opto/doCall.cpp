@@ -499,7 +499,8 @@ bool Parse::can_not_compile_call_site(ciMethod *dest_method, ciInstanceKlass* kl
       !holder_klass->is_interface()) {
     uncommon_trap(Deoptimization::Reason_uninitialized,
                   Deoptimization::Action_reinterpret,
-                  holder_klass);
+                  holder_klass, nullptr,
+                  false, true /*exact_action*/);
     return true;
   }
 
@@ -900,7 +901,8 @@ void Parse::catch_call_exceptions(ciExceptionHandlerStream& handlers) {
       push_ex_oop(ex_oop);
       uncommon_trap(Deoptimization::Reason_unloaded,
                     Deoptimization::Action_reinterpret,
-                    extype->instance_klass(), "!loaded exception");
+                    extype->instance_klass(), "!loaded exception",
+                    false, true /*exact_action*/);
       set_bci(iter().cur_bci()); // put it back
       continue;
     }

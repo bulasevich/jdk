@@ -277,7 +277,7 @@ void Parse::do_anewarray() {
     // Generate uncommon_trap for unloaded array_class
     uncommon_trap(Deoptimization::Reason_unloaded,
                   Deoptimization::Action_reinterpret,
-                  array_klass);
+                  array_klass, nullptr, false, true);
     return;
   }
 

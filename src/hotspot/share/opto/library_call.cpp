@@ -971,7 +971,8 @@ void LibraryCallKit::generate_string_range_check(Node* array,
       PreserveJVMState pjvms(this);
       set_control(_gvn.transform(bailout));
       uncommon_trap(Deoptimization::Reason_intrinsic,
-                    Deoptimization::Action_maybe_recompile);
+                    Deoptimization::Action_maybe_recompile,
+                    nullptr, nullptr, false, true /*exact_action*/);
     }
   }
 }
@@ -1160,7 +1161,7 @@ bool LibraryCallKit::inline_countPositives() {
 bool LibraryCallKit::inline_preconditions_checkIndex(BasicType bt) {
   Node* index = argument(0);
   Node* length = bt == T_INT ? argument(1) : argument(2);
-  if (too_many_traps(Deoptimization::Reason_intrinsic) || too_many_traps(Deoptimization::Reason_range_check)) {
+  if (too_many_traps_or_recompiles(Deoptimization::Reason_intrinsic) || too_many_traps_or_recompiles(Deoptimization::Reason_range_check)) {
     return false;
   }
 
@@ -4590,7 +4591,8 @@ bool LibraryCallKit::inline_array_copyOf(bool is_copyOfRange) {
       PreserveJVMState pjvms(this);
       set_control(_gvn.transform(bailout));
       uncommon_trap(Deoptimization::Reason_intrinsic,
-                    Deoptimization::Action_maybe_recompile);
+                    Deoptimization::Action_maybe_recompile,
+                    nullptr, nullptr, false, true /*exact_action*/);
     }
 
     if (!stopped()) {
@@ -4627,7 +4629,7 @@ bool LibraryCallKit::inline_array_copyOf(bool is_copyOfRange) {
       bool validated = false;
       // Reason_class_check rather than Reason_intrinsic because we
       // want to intrinsify even if this traps.
-      if (!too_many_traps(Deoptimization::Reason_class_check)) {
+      if (!too_many_traps_or_recompiles(Deoptimization::Reason_class_check)) {
         Node* not_subtype_ctrl = gen_subtype_check(original, klass_node);
 
         if (not_subtype_ctrl != top()) {
