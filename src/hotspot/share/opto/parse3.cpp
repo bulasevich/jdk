@@ -59,7 +59,8 @@ void Parse::do_field_access(bool is_get, bool is_field) {
       !(method()->holder() == field_holder && method()->is_object_initializer())) {
     uncommon_trap(Deoptimization::Reason_unhandled,
                   Deoptimization::Action_reinterpret,
-                  nullptr, "put to call site target field");
+                  nullptr, "put to call site target field",
+                  true /*exact_action*/);
     return;
   }
 
@@ -277,7 +278,7 @@ void Parse::do_anewarray() {
     // Generate uncommon_trap for unloaded array_class
     uncommon_trap(Deoptimization::Reason_unloaded,
                   Deoptimization::Action_reinterpret,
-                  array_klass, nullptr, false, true);
+                  array_klass, nullptr, false, true /*exact_action*/);
     return;
   }
 

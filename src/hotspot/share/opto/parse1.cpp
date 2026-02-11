@@ -392,7 +392,8 @@ void Parse::load_interpreter_state(Node* osr_buf) {
     // This x will be typed as Integer if notReached is not yet linked.
     // It could also happen due to a problem in ciTypeFlow analysis.
     uncommon_trap(Deoptimization::Reason_constraint,
-                  Deoptimization::Action_reinterpret);
+                  Deoptimization::Action_reinterpret,
+                  nullptr, nullptr, false, true /*exact_action*/);
     set_map(types_are_good);
   }
 }

@@ -591,7 +591,7 @@ Node* PhaseIdealLoop::loop_nest_replace_iv(Node* iv_to_replace, Node* inner_iv, 
 // Add a Parse Predicate with an uncommon trap on the failing/false path. Normal control will continue on the true path.
 void PhaseIdealLoop::add_parse_predicate(Deoptimization::DeoptReason reason, Node* inner_head, IdealLoopTree* loop,
                                          SafePointNode* sfpt) {
-  if (!C->too_many_traps(reason)) {
+  if (!C->too_many_traps_or_recompiles(reason)) {
     ParsePredicateNode* parse_predicate = new ParsePredicateNode(inner_head->in(LoopNode::EntryControl), reason, &_igvn);
     register_control(parse_predicate, loop, inner_head->in(LoopNode::EntryControl));
     Node* if_false = new IfFalseNode(parse_predicate);

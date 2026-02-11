@@ -235,7 +235,8 @@ void Parse::jump_if_true_fork(IfNode *iff, int dest_bci_if_true, bool unc) {
       uncommon_trap(Deoptimization::Reason_unstable_if,
                     Deoptimization::Action_reinterpret,
                     nullptr,
-                    "taken always");
+                    "taken always",
+                    true /*exact_action*/);
     } else {
       assert(dest_bci_if_true != never_reached, "inconsistent dest");
       merge_new_path(dest_bci_if_true);
@@ -257,7 +258,8 @@ void Parse::jump_if_false_fork(IfNode *iff, int dest_bci_if_true, bool unc) {
       uncommon_trap(Deoptimization::Reason_unstable_if,
                     Deoptimization::Action_reinterpret,
                     nullptr,
-                    "taken never");
+                    "taken never",
+                    true /*exact_action*/);
     } else {
       assert(dest_bci_if_true != never_reached, "inconsistent dest");
       merge_new_path(dest_bci_if_true);
@@ -276,7 +278,8 @@ void Parse::jump_if_always_fork(int dest_bci, bool unc) {
     uncommon_trap(Deoptimization::Reason_unstable_if,
                   Deoptimization::Action_reinterpret,
                   nullptr,
-                  "taken never");
+                  "taken never",
+                  true /*exact_action*/);
   } else {
     assert(dest_bci != never_reached, "inconsistent dest");
     merge_new_path(dest_bci);
@@ -1388,7 +1391,8 @@ void Parse::do_ifnull(BoolTest::mask btest, Node *c) {
     repush_if_args(); // to gather stats on loop
     uncommon_trap(Deoptimization::Reason_unreached,
                   Deoptimization::Action_reinterpret,
-                  nullptr, "cold");
+                  nullptr, "cold",
+                  true /*exact_action*/);
     if (C->eliminate_boxing()) {
       // Mark the successor blocks as parsed
       branch_block->next_path_num();
@@ -1463,7 +1467,8 @@ void Parse::do_if(BoolTest::mask btest, Node* c) {
     repush_if_args(); // to gather stats on loop
     uncommon_trap(Deoptimization::Reason_unreached,
                   Deoptimization::Action_reinterpret,
-                  nullptr, "cold");
+                  nullptr, "cold",
+                  true /*exact_action*/);
     if (C->eliminate_boxing()) {
       // Mark the successor blocks as parsed
       branch_block->next_path_num();
