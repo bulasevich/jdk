@@ -336,23 +336,30 @@ void Parse::init_array2d(Node* multi_array,
 
   C->set_has_loops(true);
 
-  // iff_init = if (length1 > 0)
   Node* i_init = _gvn.intcon(0);
   Node* cmp_init = _gvn.transform(new CmpINode(length1, i_init));
   Node* bool_init = _gvn.transform(new BoolNode(cmp_init, BoolTest::gt));
   IfNode* iff_init = create_and_map_if(control(), bool_init, PROB_FAIR, COUNT_UNKNOWN);
 
-  Node* skip_ctrl = IfFalse(iff_init); // skip the loop
-  Node* enter_ctrl = IfTrue(iff_init); // enter the loop
-  set_control(enter_ctrl);
+  Node* skip_ctrl = IfFalse(iff_init); // skip if length1 <= 0
+  set_control(IfTrue(iff_init));
+
+  // Narrow length2 to non-negative before the loop.  Without this,
+  // new_array() inside the loop body would emit CastII(length2) anchored
+  // to loop-body control, which then escapes to post-loop uses.
+  if (!_gvn.type(length2)->higher_equal(TypeInt::POS)) {
+    Node* cmp = _gvn.transform(new CmpINode(length2, intcon(0)));
+    Node* bol = _gvn.transform(new BoolNode(cmp, BoolTest::lt));
+    IfNode* iff_neg = create_and_map_if(control(), bol, PROB_MIN, COUNT_UNKNOWN);
+    // IfTrue (negative): dead-end; AllocateArray slow path handles the exception.
+    set_control(IfFalse(iff_neg));
+    length2 = _gvn.transform(new CastIINode(control(), length2, TypeInt::POS));
+  }
 
   Node* pre_mem = merged_memory();
   Node* pre_io  = i_o();
 
-  // LoopNode is the head of the loop with inputs:
-  //   1: pre-loop entry enter_ctrl
-  //   2: loop back-edge (placeholder until the back-edge is wired below)
-  LoopNode* head = new LoopNode(enter_ctrl, C->top());
+  LoopNode* head = new LoopNode(control(), C->top()); // back-edge wired below
   _gvn.set_type(head, Type::CONTROL);
   record_for_igvn(head);
 
@@ -362,7 +369,6 @@ void Parse::init_array2d(Node* multi_array,
   _gvn.set_type(index, TypeInt::INT);
   record_for_igvn(index);
 
-  // loop memory and IO phis (TypePtr::BOTTOM covers all alias slices)
   PhiNode* mem_phi = PhiNode::make(head, pre_mem, Type::MEMORY, TypePtr::BOTTOM);
   record_for_igvn(mem_phi);
   PhiNode* io_phi = PhiNode::make(head, pre_io, Type::ABIO);
@@ -373,20 +379,17 @@ void Parse::init_array2d(Node* multi_array,
   set_all_memory(mem_phi);
   set_i_o(io_phi);
 
-  // The loop body: array allocation + store
   ciArrayKlass* array_klass_1 =
       array_klass->as_obj_array_klass()->element_klass()->as_array_klass();
   Node* klass_node = makecon(TypeKlassPtr::make(array_klass_1, Type::trust_interfaces));
 
   Node* array = _gvn.transform(new_array(klass_node, length2, false));
 
-  // multi_array[index] = array
   store_to_memory(control(),
                   array_element_address(multi_array, index, T_OBJECT),
                   array,
                   T_OBJECT, MemNode::unordered, TypeAryPtr::OOPS, false, false, true);
 
-  // iff = if (index++ < length1)
   Node* new_i = _gvn.transform(new AddINode(index, _gvn.intcon(1)));
   Node* cmp = _gvn.transform(new CmpINode(new_i, length1));
   Node* bool_cmp = _gvn.transform(new BoolNode(cmp, BoolTest::lt));
@@ -395,19 +398,17 @@ void Parse::init_array2d(Node* multi_array,
   Node* loop_body_mem = merged_memory();
   Node* loop_body_io  = i_o();
 
-  head->set_req(LoopNode::LoopBackControl, IfTrue(iff)); // back-edge
+  head->set_req(LoopNode::LoopBackControl, IfTrue(iff));
   index->init_req(2, new_i);
   mem_phi->set_req(2, loop_body_mem);
   io_phi->set_req(2, loop_body_io);
 
-  // Exit from the loop: merge skip path and loop exit
   RegionNode* exit_region = new RegionNode(3);
   exit_region->init_req(1, skip_ctrl);
   exit_region->init_req(2, IfFalse(iff));
   record_for_igvn(exit_region);
   _gvn.set_type(exit_region, Type::CONTROL);
 
-  // Seed exits from loop phis' preheader inputs (in(1))
   PhiNode* exit_mem = PhiNode::make(exit_region, pre_mem, Type::MEMORY, TypePtr::BOTTOM);
   exit_mem->set_req(2, loop_body_mem);
   record_for_igvn(exit_mem);
