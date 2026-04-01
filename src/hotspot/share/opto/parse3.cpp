@@ -28,6 +28,7 @@
 #include "oops/objArrayKlass.hpp"
 #include "opto/addnode.hpp"
 #include "opto/castnode.hpp"
+#include "opto/loopnode.hpp"
 #include "opto/memnode.hpp"
 #include "opto/parse.hpp"
 #include "opto/rootnode.hpp"
@@ -345,11 +346,13 @@ void Parse::init_array2d(Node* multi_array,
   Node* enter_ctrl = IfTrue(iff_init); // enter the loop
   set_control(enter_ctrl);
 
-  // RegionNode is the head of the loop with inputs:
-  //   1: pre-loop input enter_ctrl
-  //   2: loop back-edge
-  RegionNode* head = new RegionNode(3);
-  head->init_req(1, control());
+  Node* pre_mem = merged_memory();
+  Node* pre_io  = i_o();
+
+  // LoopNode is the head of the loop with inputs:
+  //   1: pre-loop entry enter_ctrl
+  //   2: loop back-edge (placeholder until the back-edge is wired below)
+  LoopNode* head = new LoopNode(enter_ctrl, C->top());
   _gvn.set_type(head, Type::CONTROL);
   record_for_igvn(head);
 
@@ -359,15 +362,16 @@ void Parse::init_array2d(Node* multi_array,
   _gvn.set_type(index, TypeInt::INT);
   record_for_igvn(index);
 
-  // OOPS and RAW loop memory φ
-  PhiNode* mem_phi     = PhiNode::make(head, memory(TypeAryPtr::OOPS),   Type::MEMORY, TypeAryPtr::OOPS);
+  // loop memory and IO phis (TypePtr::BOTTOM covers all alias slices)
+  PhiNode* mem_phi = PhiNode::make(head, pre_mem, Type::MEMORY, TypePtr::BOTTOM);
   record_for_igvn(mem_phi);
-  PhiNode* mem_phi_raw = PhiNode::make(head, memory(TypeRawPtr::BOTTOM), Type::MEMORY, TypeRawPtr::BOTTOM);
-  record_for_igvn(mem_phi_raw);
+  PhiNode* io_phi = PhiNode::make(head, pre_io, Type::ABIO);
+  _gvn.set_type(io_phi, Type::ABIO);
+  record_for_igvn(io_phi);
 
   set_control(head);
-  set_memory(mem_phi,     TypeAryPtr::OOPS);
-  set_memory(mem_phi_raw, TypeRawPtr::BOTTOM);
+  set_all_memory(mem_phi);
+  set_i_o(io_phi);
 
   // The loop body: array allocation + store
   ciArrayKlass* array_klass_1 =
@@ -377,10 +381,10 @@ void Parse::init_array2d(Node* multi_array,
   Node* array = _gvn.transform(new_array(klass_node, length2, false));
 
   // multi_array[index] = array
-  Node* st = store_to_memory(control(),
-                             array_element_address(multi_array, index, T_OBJECT),
-                             array,
-                             T_OBJECT, MemNode::unordered, TypeAryPtr::OOPS, false, false, true);
+  store_to_memory(control(),
+                  array_element_address(multi_array, index, T_OBJECT),
+                  array,
+                  T_OBJECT, MemNode::unordered, TypeAryPtr::OOPS, false, false, true);
 
   // iff = if (index++ < length1)
   Node* new_i = _gvn.transform(new AddINode(index, _gvn.intcon(1)));
@@ -388,31 +392,34 @@ void Parse::init_array2d(Node* multi_array,
   Node* bool_cmp = _gvn.transform(new BoolNode(cmp, BoolTest::lt));
   IfNode* iff = create_and_map_if(control(), bool_cmp, PROB_FAIR, COUNT_UNKNOWN);
 
-  head->init_req(2, IfTrue(iff)); // Back-edge: IfTrue -> go back to head
-  index->init_req(2, new_i);
-  mem_phi->set_req(2, st);
-  mem_phi_raw->set_req(2, memory(TypeRawPtr::BOTTOM));
+  Node* loop_body_mem = merged_memory();
+  Node* loop_body_io  = i_o();
 
-  // Exit from the loop: merge skip path and loop exit with both slices
+  head->set_req(LoopNode::LoopBackControl, IfTrue(iff)); // back-edge
+  index->init_req(2, new_i);
+  mem_phi->set_req(2, loop_body_mem);
+  io_phi->set_req(2, loop_body_io);
+
+  // Exit from the loop: merge skip path and loop exit
   RegionNode* exit_region = new RegionNode(3);
   exit_region->init_req(1, skip_ctrl);
   exit_region->init_req(2, IfFalse(iff));
   record_for_igvn(exit_region);
   _gvn.set_type(exit_region, Type::CONTROL);
 
-  // Seed exits from header phis' preheader inputs (in(1))
-  PhiNode* exit_oops = PhiNode::make(exit_region, mem_phi->in(1),     Type::MEMORY, TypeAryPtr::OOPS);
-  exit_oops->set_req(2, st);
-  PhiNode* exit_raw  = PhiNode::make(exit_region, mem_phi_raw->in(1), Type::MEMORY, TypeRawPtr::BOTTOM);
-  exit_raw->set_req(2, memory(TypeRawPtr::BOTTOM));
-  record_for_igvn(exit_oops);
-  record_for_igvn(exit_raw);
-  _gvn.set_type(exit_oops, Type::MEMORY);
-  _gvn.set_type(exit_raw,  Type::MEMORY);
+  // Seed exits from loop phis' preheader inputs (in(1))
+  PhiNode* exit_mem = PhiNode::make(exit_region, pre_mem, Type::MEMORY, TypePtr::BOTTOM);
+  exit_mem->set_req(2, loop_body_mem);
+  record_for_igvn(exit_mem);
+  _gvn.set_type(exit_mem, Type::MEMORY);
+  PhiNode* exit_io = PhiNode::make(exit_region, pre_io, Type::ABIO);
+  exit_io->set_req(2, loop_body_io);
+  record_for_igvn(exit_io);
+  _gvn.set_type(exit_io, Type::ABIO);
 
   set_control(exit_region);
-  set_memory(exit_oops, TypeAryPtr::OOPS);
-  set_memory(exit_raw,  TypeRawPtr::BOTTOM);
+  set_all_memory(exit_mem);
+  set_i_o(exit_io);
 }
 
 void Parse::do_multianewarray() {
