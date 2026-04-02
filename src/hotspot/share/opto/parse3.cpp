@@ -324,12 +324,42 @@ Node* Parse::expand_multianewarray(ciArrayKlass* array_klass, Node* *lengths, in
   return array;
 }
 
-// Initialize the graph, equivalent to the following Java code:
-//
-// for (int index = 0; index < length1; index++) {
-//   multi_array[index] = new array_klass[length2];
-// }
-//
+/**
+ * Initialize the graph, equivalent to the following Java code:
+ *
+ * for (int index = 0; index < length1; index++)
+ *   multi_array[index] = new array_klass[length2];
+ *
+ * The actual loop structure:
+ *
+ * if (length1 > 0) {
+ *   int index = 0;
+ *   do {
+ *     multi_array[index] = new T[length2];
+ *     index++;
+ *   } while (index < length1);
+ * }
+ *
+ * The corresponding C2 IR graph:
+ *
+ * CmpI(length1, 0) -> Bool(gt) -> If
+ *   IfFalse => skip_ctrl
+ *   IfTrue =>
+ *     CastII(length2, POS) -> length2
+ *     LoopNode(IfTrue, back_edge)
+ *       Phi(LoopNode, 0,       next_index) -> index
+ *       Phi(LoopNode, pre_mem, body_mem)
+ *       Phi(LoopNode, pre_io,  body_io)
+ *       AllocateArray(klass_1, length2) -> array
+ *       StoreP(array_element_address(multi_array, index), array)
+ *       AddI(index, 1) -> next_index
+ *       CmpI(next_index, length1) -> Bool(lt) -> If
+ *         IfTrue  => back_edge => LoopNode
+ *         IfFalse => loop_exit
+ * Region(skip_ctrl, loop_exit)
+ *   Phi(Region, pre_mem, body_mem)
+ *   Phi(Region, pre_io,  body_io)
+ */
 void Parse::init_array2d(Node* multi_array,
                          ciArrayKlass* array_klass,
                          Node* length1, Node* length2) {
@@ -344,15 +374,8 @@ void Parse::init_array2d(Node* multi_array,
   Node* skip_ctrl = IfFalse(iff_init); // skip if length1 <= 0
   set_control(IfTrue(iff_init));
 
-  // Narrow length2 to non-negative before the loop.  Without this,
-  // new_array() inside the loop body would emit CastII(length2) anchored
-  // to loop-body control, which then escapes to post-loop uses.
+  // Narrow length2 to POS so new_array() in the loop body skips its own CastII.
   if (!_gvn.type(length2)->higher_equal(TypeInt::POS)) {
-    Node* cmp = _gvn.transform(new CmpINode(length2, intcon(0)));
-    Node* bol = _gvn.transform(new BoolNode(cmp, BoolTest::lt));
-    IfNode* iff_neg = create_and_map_if(control(), bol, PROB_MIN, COUNT_UNKNOWN);
-    // IfTrue (negative): dead-end; AllocateArray slow path handles the exception.
-    set_control(IfFalse(iff_neg));
     length2 = _gvn.transform(new CastIINode(control(), length2, TypeInt::POS));
   }
 
