@@ -104,6 +104,7 @@
   /* throw stubs */                                                    \
   do_blob(throw_AbstractMethodError, RuntimeStub)                      \
   do_blob(throw_IncompatibleClassChangeError, RuntimeStub)             \
+  do_blob(throw_NullPointerException, RuntimeStub)                     \
   do_blob(throw_NullPointerException_at_call, RuntimeStub)             \
   do_blob(throw_StackOverflowError, RuntimeStub)                       \
   do_blob(throw_delayed_StackOverflowError, RuntimeStub)               \

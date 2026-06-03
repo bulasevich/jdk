@@ -71,6 +71,7 @@ class SharedRuntime: AllStatic {
   static bool is_throw_id(StubId id) {
     return (id == StubId::shared_throw_AbstractMethodError_id ||
             id == StubId::shared_throw_IncompatibleClassChangeError_id ||
+            id == StubId::shared_throw_NullPointerException_id ||
             id == StubId::shared_throw_NullPointerException_at_call_id ||
             id == StubId::shared_throw_StackOverflowError_id ||
             id == StubId::shared_throw_delayed_StackOverflowError_id);
@@ -283,6 +284,10 @@ class SharedRuntime: AllStatic {
   static address throw_IncompatibleClassChangeError_entry() {
     assert(_throw_IncompatibleClassChangeError_blob != nullptr, "");
     return  _throw_IncompatibleClassChangeError_blob->entry_point();
+  }
+  static address throw_NullPointerException_entry() {
+    assert(_throw_NullPointerException_blob != nullptr, "");
+    return _throw_NullPointerException_blob->entry_point();
   }
   static address throw_NullPointerException_at_call_entry() {
     assert(_throw_NullPointerException_at_call_blob != nullptr, "");

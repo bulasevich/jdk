@@ -156,6 +156,10 @@ void SharedRuntime::generate_stubs() {
     generate_throw_exception(StubId::shared_throw_IncompatibleClassChangeError_id,
                              CAST_FROM_FN_PTR(address, SharedRuntime::throw_IncompatibleClassChangeError));
 
+  _throw_NullPointerException_blob =
+    generate_throw_exception(StubId::shared_throw_NullPointerException_id,
+                             CAST_FROM_FN_PTR(address, SharedRuntime::throw_NullPointerException));
+
   _throw_NullPointerException_at_call_blob =
     generate_throw_exception(StubId::shared_throw_NullPointerException_at_call_id,
                              CAST_FROM_FN_PTR(address, SharedRuntime::throw_NullPointerException_at_call));

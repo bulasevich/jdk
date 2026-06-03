@@ -580,17 +580,17 @@ void GraphKit::builtin_throw(Deoptimization::DeoptReason reason,
 
       add_exception_state(make_exception_state(ex_node));
       return;
-    } else if (builtin_throw_too_many_traps(reason, ex_obj)) {
-      // We cannot afford to take too many traps here. Suffer in the interpreter instead.
-      assert(allow_too_many_traps, "not allowed");
-      if (C->log() != nullptr) {
-        C->log()->elem("hot_throw preallocated='0' reason='%s' mcount='%d'",
-                       Deoptimization::trap_reason_name(reason),
-                       C->trap_count(reason));
-      }
-      uncommon_trap(reason, Deoptimization::Action_none,
-                    (ciKlass*) nullptr, (char*) nullptr,
-                    true /*must_throw*/);
+    } else if (reason == Deoptimization::Reason_null_check) {
+      // Inline throw with fresh exception and real stack trace.
+      // Stays fully compiled — avoids the deoptimization storm.
+      assert(ex_obj != nullptr, "");
+      kill_dead_locals();
+      Node* call = make_runtime_call(RC_NO_LEAF | RC_MUST_THROW | RC_UNCOMMON,
+                                     OptoRuntime::void_void_Type(),
+                                     SharedRuntime::throw_NullPointerException_entry(),
+                                     "throw_NullPointerException", TypeRawPtr::BOTTOM);
+      make_slow_call_ex(call, ex_obj->klass()->as_instance_klass(), false, false);
+      stop();
       return;
     }
   }
