@@ -595,13 +595,23 @@ void GraphKit::builtin_throw(Deoptimization::DeoptReason reason,
     }
   }
 
-  // %%% Maybe add entry to OptoRuntime which directly throws the exc.?
-  // It won't be much cheaper than bailing to the interp., since we'll
-  // have to pass up all the debug-info, and the runtime will have to
-  // create the stack trace.
-
   // Usual case:  Bail to interpreter.
   // Reserve the right to recompile if we haven't seen anything yet.
+  //
+  // If too_many_recompiles is already true, Action_maybe_recompile would be
+  // downgraded to Action_none in uncommon_trap(), keeping the nmethod valid and
+  // causing a deoptimization storm.  Generate inline throw instead.
+  if (reason == Deoptimization::Reason_null_check &&
+      ex_obj != nullptr && too_many_recompiles(reason)) {
+    kill_dead_locals();
+    Node* call = make_runtime_call(RC_NO_LEAF | RC_MUST_THROW | RC_UNCOMMON,
+                                   OptoRuntime::void_void_Type(),
+                                   SharedRuntime::throw_NullPointerException_entry(),
+                                   "throw_NullPointerException", TypeRawPtr::BOTTOM);
+    make_slow_call_ex(call, ex_obj->klass()->as_instance_klass(), false, false);
+    stop();
+    return;
+  }
 
   // "must_throw" prunes the JVM state to include only the stack, if there
   // are no local exception handlers.  This should cut down on register
