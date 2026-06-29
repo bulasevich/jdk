@@ -22,13 +22,13 @@
  *
  */
 
-#include "cntvct_aarch64.hpp"
+#include "cntvctss_aarch64.hpp"
 #include "runtime/atomicAccess.hpp"
 #include "runtime/globals_extension.hpp"
 #include "vm_version_aarch64.hpp"
 
-DEBUG_ONLY(volatile int Cntvct::_initialized = 0;)
-jlong Cntvct::_epoch = 0;
+DEBUG_ONLY(volatile int Cntvctss::_initialized = 0;)
+jlong Cntvctss::_epoch = 0;
 
 static inline jlong read_cntvctss() {
   uint64_t res;
@@ -36,14 +36,14 @@ static inline jlong read_cntvctss() {
   return (jlong)res;
 }
 
-jlong Cntvct::set_epoch() {
+jlong Cntvctss::set_epoch() {
   assert(0 == _epoch, "invariant");
   _epoch = read_cntvctss();
   return _epoch;
 }
 
 static bool ergonomics() {
-  if (Cntvct::is_supported()) {
+  if (Cntvctss::is_supported()) {
     FLAG_SET_ERGO_IF_DEFAULT(UseFastUnorderedTimeStamps, true);
   } else if (UseFastUnorderedTimeStamps) {
     assert(!FLAG_IS_DEFAULT(UseFastUnorderedTimeStamps), "Unexpected default value");
@@ -53,7 +53,7 @@ static bool ergonomics() {
   return UseFastUnorderedTimeStamps;
 }
 
-bool Cntvct::initialize() {
+bool Cntvctss::initialize() {
   precond(AtomicAccess::xchg(&_initialized, 1) == 0);
   assert(0 == _epoch, "invariant");
   if (!ergonomics()) {
@@ -63,27 +63,27 @@ bool Cntvct::initialize() {
   return _epoch != 0;
 }
 
-bool Cntvct::is_supported() {
+bool Cntvctss::is_supported() {
   return VM_Version::supports_ecv();
 }
 
-jlong Cntvct::frequency() {
+jlong Cntvctss::frequency() {
   return 1000000000LL; // FEAT_ECV mandates 1 GHz
 }
 
-jlong Cntvct::elapsed_counter() {
+jlong Cntvctss::elapsed_counter() {
   return read_cntvctss() - _epoch;
 }
 
-jlong Cntvct::epoch() {
+jlong Cntvctss::epoch() {
   return _epoch;
 }
 
-jlong Cntvct::raw() {
+jlong Cntvctss::raw() {
   return read_cntvctss();
 }
 
-bool Cntvct::enabled() {
+bool Cntvctss::enabled() {
   static bool result = initialize();
   return result;
 }

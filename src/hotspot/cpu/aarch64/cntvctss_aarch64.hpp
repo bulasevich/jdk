@@ -22,15 +22,15 @@
  *
  */
 
-#ifndef CPU_AARCH64_CNTVCT_AARCH64_HPP
-#define CPU_AARCH64_CNTVCT_AARCH64_HPP
+#ifndef CPU_AARCH64_CNTVCTSS_AARCH64_HPP
+#define CPU_AARCH64_CNTVCTSS_AARCH64_HPP
 
 #include "memory/allStatic.hpp"
 #include "utilities/globalDefinitions.hpp"
 
 // AArch64 CNTVCTSS_EL0 counter (FEAT_ECV, Armv8.6+), analogous to x86 RDTSC.
 
-class Cntvct : AllStatic {
+class Cntvctss : AllStatic {
  private:
   DEBUG_ONLY(static volatile int _initialized;)
   static jlong _epoch;
@@ -47,4 +47,4 @@ class Cntvct : AllStatic {
   static bool  enabled();
 };
 
-#endif // CPU_AARCH64_CNTVCT_AARCH64_HPP
+#endif // CPU_AARCH64_CNTVCTSS_AARCH64_HPP

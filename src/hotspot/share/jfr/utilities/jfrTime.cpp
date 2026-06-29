@@ -27,7 +27,7 @@
 #if defined(X86) && !defined(ZERO)
 #include "rdtsc_x86.hpp"
 #elif defined(AARCH64) && !defined(ZERO)
-#include "cntvct_aarch64.hpp"
+#include "cntvctss_aarch64.hpp"
 #endif
 
 bool JfrTime::_ft_enabled = false;
@@ -38,7 +38,7 @@ bool JfrTime::initialize() {
 #if defined(X86) && !defined(ZERO)
     _ft_enabled = Rdtsc::enabled();
 #elif defined(AARCH64) && !defined(ZERO)
-    _ft_enabled = Cntvct::enabled();
+    _ft_enabled = Cntvctss::enabled();
 #else
     _ft_enabled = false;
 #endif
@@ -51,7 +51,7 @@ bool JfrTime::is_ft_supported() {
 #if defined(X86) && !defined(ZERO)
   return Rdtsc::is_supported();
 #elif defined(AARCH64) && !defined(ZERO)
-  return Cntvct::is_supported();
+  return Cntvctss::is_supported();
 #else
   return false;
 #endif
@@ -62,7 +62,7 @@ const void* JfrTime::time_function() {
 #if defined(X86) && !defined(ZERO)
   return _ft_enabled ? (const void*)Rdtsc::elapsed_counter : (const void*)os::elapsed_counter;
 #elif defined(AARCH64) && !defined(ZERO)
-  return _ft_enabled ? (const void*)Cntvct::elapsed_counter : (const void*)os::elapsed_counter;
+  return _ft_enabled ? (const void*)Cntvctss::elapsed_counter : (const void*)os::elapsed_counter;
 #else
   return (const void*)os::elapsed_counter;
 #endif
@@ -72,7 +72,7 @@ jlong JfrTime::frequency() {
 #if defined(X86) && !defined(ZERO)
   return _ft_enabled ? Rdtsc::frequency() : os::elapsed_frequency();
 #elif defined(AARCH64) && !defined(ZERO)
-  return _ft_enabled ? Cntvct::frequency() : os::elapsed_frequency();
+  return _ft_enabled ? Cntvctss::frequency() : os::elapsed_frequency();
 #else
   return os::elapsed_frequency();
 #endif
