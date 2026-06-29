@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2026, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026, BELLSOFT. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,11 +24,9 @@
  */
 
 #include "cntvctss_aarch64.hpp"
-#include "runtime/atomicAccess.hpp"
 #include "runtime/globals_extension.hpp"
 #include "vm_version_aarch64.hpp"
 
-DEBUG_ONLY(volatile int Cntvctss::_initialized = 0;)
 jlong Cntvctss::_epoch = 0;
 
 static inline jlong read_cntvctss() {
@@ -54,7 +53,6 @@ static bool ergonomics() {
 }
 
 bool Cntvctss::initialize() {
-  precond(AtomicAccess::xchg(&_initialized, 1) == 0);
   assert(0 == _epoch, "invariant");
   if (!ergonomics()) {
     return false;
@@ -68,7 +66,7 @@ bool Cntvctss::is_supported() {
 }
 
 jlong Cntvctss::frequency() {
-  return 1000000000LL; // FEAT_ECV mandates 1 GHz
+  return 1000000000LL; // Generic Timer runs at 1 GHz on Armv8.6-A+ (FEAT_ECV)
 }
 
 jlong Cntvctss::elapsed_counter() {

@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2026, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026, BELLSOFT. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,11 +29,12 @@
 #include "memory/allStatic.hpp"
 #include "utilities/globalDefinitions.hpp"
 
-// AArch64 CNTVCTSS_EL0 counter (FEAT_ECV, Armv8.6+), analogous to x86 RDTSC.
+// Interface to the AArch64 CNTVCTSS_EL0 counter (FEAT_ECV, Armv8.6+).
+// The Generic Timer is consistent across cores and does not require an ISB barrier.
+// FEAT_ECV is a requirement for auto-enablement.
 
 class Cntvctss : AllStatic {
  private:
-  DEBUG_ONLY(static volatile int _initialized;)
   static jlong _epoch;
 
   static jlong set_epoch();
