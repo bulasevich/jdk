@@ -644,7 +644,19 @@ void SharedRuntime::generate_i2c2i_adapters(MacroAssembler* masm,
   entry_address[AdapterBlob::C2I] = __ pc();
   entry_address[AdapterBlob::C2I_No_Clinit_Check] = nullptr;
   gen_c2i_adapter(masm, comp_args_on_stack, sig, regs, skip_fixup);
-  return;
+
+  // No scalarized args on ARM32, so inline entries alias the regular ones.
+  entry_address[AdapterBlob::C2I_Inline] = entry_address[AdapterBlob::C2I];
+  entry_address[AdapterBlob::C2I_Inline_RO] = entry_address[AdapterBlob::C2I];
+  entry_address[AdapterBlob::C2I_Unverified_Inline] = entry_address[AdapterBlob::C2I_Unverified];
+
+  if (allocate_code_blob) {
+    int entry_offset[AdapterBlob::ENTRY_COUNT];
+    AdapterHandlerLibrary::address_to_offset(entry_address, entry_offset);
+    OopMapSet* oop_maps = new OopMapSet();
+    new_adapter = AdapterBlob::create(masm->code(), entry_offset, CodeOffsets::frame_never_safe,
+                                      0 /* frame_size_in_words */, oop_maps);
+  }
 }
 
 
@@ -1851,12 +1863,77 @@ RuntimeStub* SharedRuntime::generate_jfr_return_lease() {
 
 #endif // INCLUDE_JFR
 
-const uint SharedRuntime::java_return_convention_max_int = 0; // Argument::n_int_register_parameters_j;
-const uint SharedRuntime::java_return_convention_max_float = 0; // Argument::n_float_register_parameters_j;
+// No scalarized returns on ARM32 (InlineTypeReturnedAsFields is false).
+const uint SharedRuntime::java_return_convention_max_int = 1;
+const uint SharedRuntime::java_return_convention_max_float = 1;
 
 int SharedRuntime::java_return_convention(const BasicType *sig_bt, VMRegPair *regs, int total_args_passed) {
-  Unimplemented();
-  return 0;
+  uint int_args = 0;
+  uint fp_args = 0;
+
+  for (int i = 0; i < total_args_passed; i++) {
+    switch (sig_bt[i]) {
+    case T_BOOLEAN:
+    case T_CHAR:
+    case T_BYTE:
+    case T_SHORT:
+    case T_INT:
+    case T_OBJECT:
+    case T_ARRAY:
+    case T_ADDRESS:
+    case T_METADATA:
+      if (int_args < java_return_convention_max_int) {
+        regs[i].set1(R0->as_VMReg());
+        int_args++;
+      } else {
+        return -1;
+      }
+      break;
+    case T_LONG:
+      assert((i + 1) < total_args_passed && sig_bt[i + 1] == T_VOID, "expecting half");
+      if (int_args < java_return_convention_max_int) {
+        regs[i].set_pair(R1->as_VMReg(), R0->as_VMReg());
+        int_args++;
+      } else {
+        return -1;
+      }
+      break;
+    case T_VOID:
+      // second half of T_LONG or T_DOUBLE
+      regs[i].set_bad();
+      break;
+    case T_FLOAT:
+      if (fp_args < java_return_convention_max_float) {
+#ifdef __ABI_HARD__
+        regs[i].set1(S0->as_VMReg());
+#else
+        regs[i].set1(R0->as_VMReg());
+#endif
+        fp_args++;
+      } else {
+        return -1;
+      }
+      break;
+    case T_DOUBLE:
+      assert((i + 1) < total_args_passed && sig_bt[i + 1] == T_VOID, "expecting half");
+      if (fp_args < java_return_convention_max_float) {
+#ifdef __ABI_HARD__
+        regs[i].set_pair(as_FloatRegister(1)->as_VMReg(), S0->as_VMReg());
+#else
+        regs[i].set_pair(R1->as_VMReg(), R0->as_VMReg());
+#endif
+        fp_args++;
+      } else {
+        return -1;
+      }
+      break;
+    default:
+      ShouldNotReachHere();
+      break;
+    }
+  }
+
+  return int_args + fp_args;
 }
 
 BufferedInlineTypeBlob* SharedRuntime::generate_buffered_inline_type_adapter(const InlineKlass* vk) {

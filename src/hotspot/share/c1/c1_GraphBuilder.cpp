@@ -1127,7 +1127,7 @@ void GraphBuilder::load_indexed(BasicType type) {
     }
   } else {
     load_indexed = new LoadIndexed(array, index, length, type, state_before);
-    if (profile_array_accesses() && is_reference_type(type)) {
+    if (profile_array_accesses() && is_reference_type(type) && TypeProfileLevel != 0) {
       compilation()->set_would_profile(true);
       load_indexed->set_should_profile(true);
       load_indexed->set_profiled_method(method());
@@ -1173,7 +1173,7 @@ void GraphBuilder::store_indexed(BasicType type) {
   }
 
   StoreIndexed* store_indexed = new StoreIndexed(array, index, length, type, value, state_before, check_boolean);
-  if (profile_array_accesses() && is_reference_type(type) && !array->is_loaded_flat_array()) {
+  if (profile_array_accesses() && is_reference_type(type) && !array->is_loaded_flat_array() && TypeProfileLevel != 0) {
     compilation()->set_would_profile(true);
     store_indexed->set_should_profile(true);
     store_indexed->set_profiled_method(method());
@@ -1390,7 +1390,7 @@ void GraphBuilder::if_node(Value x, If::Condition cond, Value y, ValueStack* sta
     }
   }
   if ((stream()->cur_bc() == Bytecodes::_if_acmpeq || stream()->cur_bc() == Bytecodes::_if_acmpne) &&
-      is_profiling() && profile_branches()) {
+      is_profiling() && profile_branches() && TypeProfileLevel != 0) {
     compilation()->set_would_profile(true);
     append(new ProfileACmpTypes(method(), bci(), x, y));
   }

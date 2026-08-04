@@ -46,6 +46,7 @@
 #include "nmt/nmtCommon.hpp"
 #include "oops/compressedKlass.hpp"
 #include "oops/instanceKlass.hpp"
+#include "oops/markWord.hpp"
 #include "oops/objLayout.hpp"
 #include "oops/oop.inline.hpp"
 #include "prims/jvmtiAgentList.hpp"
@@ -3515,6 +3516,10 @@ jint Arguments::apply_ergo() {
   if (BytecodeVerificationLocal && !BytecodeVerificationRemote) {
     log_info(verification)("Turning on remote verification because local verification is on");
     FLAG_SET_DEFAULT(BytecodeVerificationRemote, true);
+  }
+  if (is_valhalla_enabled() && !VALHALLA_ENABLED) {
+    vm_exit_during_initialization(
+      "--enable-preview (value classes / Valhalla) is not supported on this platform");
   }
   if (!is_valhalla_enabled()) {
 #define WARN_IF_NOT_DEFAULT_FLAG(flag)                                                                       \

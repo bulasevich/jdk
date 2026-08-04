@@ -323,7 +323,8 @@ void InterpreterMacroAssembler::gen_subtype_check(Register Rsub_klass,
                                                   Register Rsuper_klass,
                                                   Label &not_subtype,
                                                   Register tmp1,
-                                                  Register tmp2) {
+                                                  Register tmp2,
+                                                  bool profile) {
 
   assert_different_registers(Rsub_klass, Rsuper_klass, tmp1, tmp2, Rtemp);
   Label ok_is_subtype, loop, update_cache;
@@ -331,8 +332,10 @@ void InterpreterMacroAssembler::gen_subtype_check(Register Rsub_klass,
   const Register super_check_offset = tmp1;
   const Register cached_super = tmp2;
 
-  // Profile the not-null value's klass.
-  profile_typecheck(tmp1, Rsub_klass);
+  // aastore profiles itself via ArrayStoreData; skip to avoid a double mdp advance.
+  if (profile) {
+    profile_typecheck(tmp1, Rsub_klass);
+  }
 
   // Load the super-klass's check offset into
   ldr_u32(super_check_offset, Address(Rsuper_klass, Klass::super_check_offset_offset()));
@@ -1149,7 +1152,7 @@ void InterpreterMacroAssembler::profile_taken_branch(Register mdp, Register bump
 
 
 // Sets mdp, blows Rtemp.
-void InterpreterMacroAssembler::profile_not_taken_branch(Register mdp) {
+void InterpreterMacroAssembler::profile_not_taken_branch(Register mdp, bool acmp) {
   assert_different_registers(mdp, Rtemp);
 
   if (ProfileInterpreter) {
@@ -1162,7 +1165,7 @@ void InterpreterMacroAssembler::profile_not_taken_branch(Register mdp) {
     increment_mdp_data_at(mdp, in_bytes(BranchData::not_taken_offset()), Rtemp);
 
     // The method data pointer needs to be updated to correspond to the next bytecode
-    update_mdp_by_constant(mdp, in_bytes(BranchData::branch_data_size()));
+    update_mdp_by_constant(mdp, acmp ? in_bytes(ACmpData::acmp_data_size()) : in_bytes(BranchData::branch_data_size()));
 
     bind (profile_continue);
   }
@@ -1317,6 +1320,47 @@ void InterpreterMacroAssembler::record_klass_in_profile(Register receiver,
   record_klass_in_profile_helper(receiver, mdp, reg_tmp, 0, done, is_virtual_call);
 
   bind (done);
+}
+
+// No flat/null-free array speculation on arm32; mdp is advanced by
+// profile_element_type/profile_multiple_element_types below instead.
+template <class ArrayData> void InterpreterMacroAssembler::profile_array_type(Register mdp, Register array, Register tmp) {
+  if (ProfileInterpreter) {
+    Label profile_continue;
+    test_method_data_pointer(mdp, profile_continue);
+    bind(profile_continue);
+  }
+}
+
+template void InterpreterMacroAssembler::profile_array_type<ArrayLoadData>(Register mdp, Register array, Register tmp);
+template void InterpreterMacroAssembler::profile_array_type<ArrayStoreData>(Register mdp, Register array, Register tmp);
+
+void InterpreterMacroAssembler::profile_element_type(Register mdp, Register element, Register tmp) {
+  if (ProfileInterpreter) {
+    Label profile_continue;
+    test_method_data_pointer(mdp, profile_continue);
+    update_mdp_by_constant(mdp, in_bytes(ArrayLoadData::array_load_data_size()));
+    bind(profile_continue);
+  }
+}
+
+void InterpreterMacroAssembler::profile_multiple_element_types(Register mdp, Register element, Register tmp, Register tmp2) {
+  if (ProfileInterpreter) {
+    Label profile_continue;
+    test_method_data_pointer(mdp, profile_continue);
+    update_mdp_by_constant(mdp, in_bytes(ArrayStoreData::array_store_data_size()));
+    bind(profile_continue);
+  }
+}
+
+// No substitutability speculation on arm32; mdp is advanced by
+// profile_not_taken_branch(mdp, true) / profile_taken_branch instead.
+void InterpreterMacroAssembler::profile_acmp(Register mdp, Register left, Register right, Register tmp) {
+  if (ProfileInterpreter) {
+    Label profile_continue;
+    test_method_data_pointer(mdp, profile_continue);
+    bind(profile_continue);
+  }
 }
 
 // Sets mdp, blows volatile registers R0-R3, Rtemp, LR).

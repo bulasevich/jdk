@@ -146,7 +146,8 @@ enum RegisterLayout {
   LR_offset,
   reg_save_size,
   arg1_offset = reg_save_size * wordSize,
-  arg2_offset = (reg_save_size + 1) * wordSize
+  arg2_offset = (reg_save_size + 1) * wordSize,
+  arg3_offset = (reg_save_size + 2) * wordSize
 };
 
 
@@ -441,11 +442,14 @@ OopMapSet* Runtime1::generate_code_for(StubId id, StubAssembler* sasm) {
 
     case StubId::c1_new_type_array_id:
     case StubId::c1_new_object_array_id:
+    case StubId::c1_new_null_free_array_id:
       {
         if (id == StubId::c1_new_type_array_id) {
           __ set_info("new_type_array", dont_gc_arguments);
-        } else {
+        } else if (id == StubId::c1_new_object_array_id) {
           __ set_info("new_object_array", dont_gc_arguments);
+        } else {
+          __ set_info("new_null_free_array", dont_gc_arguments);
         }
 
         const Register result = R0;
@@ -456,8 +460,10 @@ OopMapSet* Runtime1::generate_code_for(StubId id, StubAssembler* sasm) {
         int call_offset;
         if (id == StubId::c1_new_type_array_id) {
           call_offset = __ call_RT(result, noreg, CAST_FROM_FN_PTR(address, new_type_array), klass, length);
-        } else {
+        } else if (id == StubId::c1_new_object_array_id) {
           call_offset = __ call_RT(result, noreg, CAST_FROM_FN_PTR(address, new_object_array), klass, length);
+        } else {
+          call_offset = __ call_RT(result, noreg, CAST_FROM_FN_PTR(address, new_null_free_array), klass, length);
         }
         oop_maps = new OopMapSet();
         oop_maps->add_gc_map(call_offset, map);
@@ -488,6 +494,75 @@ OopMapSet* Runtime1::generate_code_for(StubId id, StubAssembler* sasm) {
         // MacroAssembler::StoreStore useless (included in the runtime exit path)
 
         restore_live_registers_except_R0(sasm);
+      }
+      break;
+
+    case StubId::c1_buffer_inline_args_id:
+    case StubId::c1_buffer_inline_args_no_receiver_id:
+      {
+        // Unreachable on ARM32 (no scalarized args); stubbed for boot-time stub generation.
+        if (id == StubId::c1_buffer_inline_args_id) {
+          __ set_info("buffer_inline_args", dont_gc_arguments);
+        } else {
+          __ set_info("buffer_inline_args_no_receiver", dont_gc_arguments);
+        }
+        address entry = (id == StubId::c1_buffer_inline_args_id) ?
+          CAST_FROM_FN_PTR(address, buffer_inline_args) :
+          CAST_FROM_FN_PTR(address, buffer_inline_args_no_receiver);
+
+        const Register result = R0;
+        const Register method = R1;
+
+        OopMap* map = save_live_registers(sasm);
+        int call_offset = __ call_RT(result, noreg, entry, method);
+        oop_maps = new OopMapSet();
+        oop_maps->add_gc_map(call_offset, map);
+        restore_live_registers_except_R0(sasm);
+      }
+      break;
+
+    case StubId::c1_load_flat_array_id:
+      {
+        // Unreachable on ARM32 (UseArrayFlattening forced off); stubbed for boot-time stub generation.
+        __ set_info("load_flat_array", dont_gc_arguments);
+        const Register result = R0;
+        OopMap* map = save_live_registers(sasm);
+        __ ldr(R1, Address(SP, arg1_offset));  // array
+        __ ldr(R2, Address(SP, arg2_offset));  // index
+        int call_offset = __ call_RT(result, noreg, CAST_FROM_FN_PTR(address, load_flat_array), R1, R2);
+        oop_maps = new OopMapSet();
+        oop_maps->add_gc_map(call_offset, map);
+        restore_live_registers_except_R0(sasm);
+      }
+      break;
+
+    case StubId::c1_store_flat_array_id:
+      {
+        // Unreachable on ARM32 (see load_flat_array_id above).
+        __ set_info("store_flat_array", dont_gc_arguments);
+        OopMap* map = save_live_registers(sasm);
+        __ ldr(R1, Address(SP, arg1_offset));  // array
+        __ ldr(R2, Address(SP, arg2_offset));  // index
+        __ ldr(R3, Address(SP, arg3_offset));  // value
+        int call_offset = __ call_RT(noreg, noreg, CAST_FROM_FN_PTR(address, store_flat_array), R1, R2, R3);
+        oop_maps = new OopMapSet();
+        oop_maps->add_gc_map(call_offset, map);
+        restore_live_registers(sasm);
+      }
+      break;
+
+    case StubId::c1_substitutability_check_id:
+      {
+        // SubstitutabilityCheckStub::emit_code() is still Unimplemented().
+        __ set_info("substitutability_check", dont_gc_arguments);
+        OopMap* map = save_live_registers(sasm);
+        __ ldr(R1, Address(SP, arg1_offset));  // left
+        __ ldr(R2, Address(SP, arg2_offset));  // right
+        int call_offset = __ call_RT(noreg, noreg, CAST_FROM_FN_PTR(address, substitutability_check), R1, R2);
+        oop_maps = new OopMapSet();
+        oop_maps->add_gc_map(call_offset, map);
+        restore_live_registers_except_R0(sasm);
+        // R0: are the two operands substitutable
       }
       break;
 
@@ -580,6 +655,20 @@ OopMapSet* Runtime1::generate_code_for(StubId id, StubAssembler* sasm) {
       {
         __ set_info("throw_incompatible_class_cast_exception", dont_gc_arguments);
         oop_maps = generate_exception_throw(sasm, CAST_FROM_FN_PTR(address, throw_incompatible_class_change_error), false);
+      }
+      break;
+
+    case StubId::c1_throw_illegal_monitor_state_exception_id:
+      {
+        __ set_info("throw_illegal_monitor_state_exception", dont_gc_arguments);
+        oop_maps = generate_exception_throw(sasm, CAST_FROM_FN_PTR(address, throw_illegal_monitor_state_exception), false);
+      }
+      break;
+
+    case StubId::c1_throw_identity_exception_id:
+      {
+        __ set_info("throw_identity_exception", dont_gc_arguments);
+        oop_maps = generate_exception_throw(sasm, CAST_FROM_FN_PTR(address, throw_identity_exception), true);
       }
       break;
 

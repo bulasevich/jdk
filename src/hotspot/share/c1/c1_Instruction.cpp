@@ -30,6 +30,7 @@
 #include "ci/ciInlineKlass.hpp"
 #include "ci/ciObjArrayKlass.hpp"
 #include "ci/ciTypeArrayKlass.hpp"
+#include "oops/markWord.hpp"
 #include "utilities/bitMap.inline.hpp"
 
 
@@ -161,6 +162,9 @@ bool Instruction::maybe_flat_array() const {
 }
 
 bool Instruction::maybe_null_free_array() const {
+  if (!VALHALLA_ENABLED) {
+    return false;
+  }
   ciType* type = declared_type();
   if (type != nullptr) {
     if (type->is_loaded() && type->is_array_klass() && type->as_array_klass()->is_refined()) {

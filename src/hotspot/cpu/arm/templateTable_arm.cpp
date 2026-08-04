@@ -887,7 +887,9 @@ void TemplateTable::aaload() {
   const Register Rindex = R0_tos;
 
   index_check(Rarray, Rindex);
+  __ profile_array_type<ArrayLoadData>(R2_tmp, Rarray, R3_tmp);
   do_oop_load(_masm, R0_tos, get_array_elem_addr_same_base(T_OBJECT, Rarray, Rindex, Rtemp), IS_ARRAY);
+  __ profile_element_type(R2_tmp, R0_tos, R3_tmp);
 }
 
 
@@ -1229,6 +1231,9 @@ void TemplateTable::aastore() {
 
   index_check_without_pop(Rarray_3, Rindex_4);
 
+  __ profile_array_type<ArrayStoreData>(R0_tmp, Rarray_3, Rtemp);
+  __ profile_multiple_element_types(R0_tmp, Rvalue_2, Rtemp, Rsuper_LR);
+
   // Compute the array base
   __ add(Raddr_1, Rarray_3, arrayOopDesc::base_offset_in_bytes(T_OBJECT));
 
@@ -1241,7 +1246,7 @@ void TemplateTable::aastore() {
   __ load_klass(Rtemp, Rarray_3);
   __ ldr(Rsuper_LR, Address(Rtemp, ObjArrayKlass::element_klass_offset()));
 
-  __ gen_subtype_check(Rsub_5, Rsuper_LR, throw_array_store, R0_tmp, R3_tmp);
+  __ gen_subtype_check(Rsub_5, Rsuper_LR, throw_array_store, R0_tmp, R3_tmp, false);
   // Come here on success
 
   // Store value
@@ -1254,14 +1259,11 @@ void TemplateTable::aastore() {
   __ bind(throw_array_store);
 
   // Come here on failure of subtype check
-  __ profile_typecheck_failed(R0_tmp);
-
   // object is at TOS
   __ b(Interpreter::_throw_ArrayStoreException_entry);
 
   // Have a null in Rvalue_2, store null at array[index].
   __ bind(is_null);
-  __ profile_null_seen(R0_tmp);
 
   // Store a null
   do_oop_store(_masm, Address::indexed_oop(Raddr_1, Rindex_4), Rvalue_2, Rtemp, R0_tmp, R3_tmp, true, IS_ARRAY);
@@ -2209,11 +2211,12 @@ void TemplateTable::if_acmp(Condition cc) {
   // assume branch is more often taken than not (loops use backward branches)
   Label not_taken;
   __ pop_ptr(R1_tmp);
+  __ profile_acmp(R2_tmp, R1_tmp, R0_tos, R3_tmp);
   __ cmpoop(R1_tmp, R0_tos);
   __ b(not_taken, convNegCond(cc));
   branch(false, false);
   __ bind(not_taken);
-  __ profile_not_taken_branch(R0_tmp);
+  __ profile_not_taken_branch(R0_tmp, true);
 }
 
 
@@ -3493,6 +3496,7 @@ void TemplateTable::fast_storefield(TosState state) {
       __ access_store_at(T_DOUBLE, IN_HEAP, addr, noreg, noreg, noreg, noreg, false);
       break;
     case Bytecodes::_fast_aputfield:
+    case Bytecodes::_fast_vputfield: // flat fields are not supported on arm32, never actually taken
       do_oop_store(_masm, addr, R0_tos, Rtemp, R1_tmp, R2_tmp, false);
       break;
 
@@ -3575,6 +3579,7 @@ void TemplateTable::fast_accessfield(TosState state) {
       __ access_load_at(T_DOUBLE, IN_HEAP, addr, noreg, noreg, noreg, noreg);
       break;
     case Bytecodes::_fast_agetfield:
+    case Bytecodes::_fast_vgetfield: // flat fields are not supported on arm32, never actually taken
       do_oop_load(_masm, R0_tos, addr);
       __ verify_oop(R0_tos);
       break;

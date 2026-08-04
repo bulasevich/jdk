@@ -85,6 +85,8 @@
 class ObjectMonitor;
 class outputStream;
 
+#define VALHALLA_ENABLED LP64_ONLY(1) NOT_LP64(0)
+
 class markWord {
  private:
   uintptr_t _value;
