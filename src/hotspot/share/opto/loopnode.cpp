@@ -4563,6 +4563,60 @@ bool PhaseIdealLoop::is_deleteable_safept(Node* sfpt) const {
   return true;
 }
 
+//---------------------------is_offset_by--------------------------------------
+// Is 'n' known to be 'base + offset'?
+static bool is_offset_by(PhaseIterGVN& igvn, Node* n, Node* base, jint offset) {
+  if (offset == 0) {
+    return n == base;
+  }
+  if (n->Opcode() == Op_AddI && n->in(1) == base && n->in(2)->is_Con() &&
+      n->in(2)->get_int() == offset) {
+    return true;
+  }
+  const TypeInt* tn = igvn.type(n)->isa_int();
+  const TypeInt* tbase = igvn.type(base)->isa_int();
+  return tn != nullptr && tn->is_con() &&
+         tbase != nullptr && tbase->is_con() &&
+         tn->get_con() == java_add(tbase->get_con(), offset);
+}
+
+//---------------------------eliminate_doubled_index---------------------------
+bool PhaseIdealLoop::eliminate_doubled_index(IdealLoopTree* loop, PhiNode* phi2) {
+  CountedLoopNode* cl = loop->_head->as_CountedLoop();
+  Node* phi = cl->phi();
+  Node* back = phi2->in(LoopNode::LoopBackControl);
+
+  jint back_offset = 0;
+  if (back->Opcode() == Op_AddI && back->in(2)->is_Con()) {
+    back_offset = back->in(2)->get_int();
+    back = back->in(1);
+  }
+  if (back != phi) {
+    return false;
+  }
+
+  jint delta = java_subtract(back_offset, checked_cast<jint>(cl->stride_con()));
+  if (!is_offset_by(_igvn, phi2->in(LoopNode::EntryControl), cl->init_trip(), delta)) {
+    return false;
+  }
+
+  Node* prev = phi;
+  if (delta != 0) {
+    Node* con = _igvn.intcon(delta);
+    set_ctrl(con, C->root());
+    prev = new AddINode(phi, con);
+    register_new_node(prev, cl);
+    while (loop->_body.contains(prev)) {
+      loop->_body.yank(prev);
+    }
+  }
+  _igvn.replace_node(phi2, prev);
+  if (prev != phi && prev->outcnt() == 0) {
+    _igvn.remove_dead_node(prev, PhaseIterGVN::NodeOrigin::Graph);
+  }
+  return true;
+}
+
 //---------------------------replace_parallel_iv-------------------------------
 // Replace parallel induction variable (parallel to trip counter)
 // This optimization looks for patterns similar to:
@@ -4623,6 +4677,11 @@ void PhaseIdealLoop::replace_parallel_iv(IdealLoopTree *loop) {
     }
 
     PhiNode* phi2 = out->as_Phi();
+    if (EliminateDoubledIndex && phi2->region() == loop->_head && eliminate_doubled_index(loop, phi2)) {
+      --i;
+      continue;
+    }
+
     Node* incr2 = phi2->in(LoopNode::LoopBackControl);
     // Look for induction variables of the form:  X += constant
     if (phi2->region() != loop->_head ||
